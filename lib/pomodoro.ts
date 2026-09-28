@@ -13,7 +13,11 @@ export type Settings = {
   autoStart: boolean;
   /** Play the chiptune alert. */
   sound: boolean;
+  /** Keep repeating the alert until it's stopped. */
+  repeatAlert: boolean;
 };
+
+export type FlagSetting = "autoStart" | "sound" | "repeatAlert";
 
 export type NumericSetting = "focus" | "short" | "long" | "every";
 
@@ -29,6 +33,7 @@ export const DEFAULTS: Settings = {
   every: 4,
   autoStart: false,
   sound: true,
+  repeatAlert: false,
 };
 
 export const LIMITS: Record<NumericSetting, [number, number]> = {
@@ -49,6 +54,12 @@ export const SETTING_NAMES: Record<NumericSetting, string> = {
   short: "short_break_len",
   long: "long_break_len",
   every: "long_break_every",
+};
+
+export const FLAG_NAMES: Record<FlagSetting, string> = {
+  autoStart: "auto_start",
+  sound: "sound",
+  repeatAlert: "repeat_alert",
 };
 
 /** Log color for a given mode. */
