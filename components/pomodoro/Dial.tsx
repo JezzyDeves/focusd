@@ -1,3 +1,5 @@
+import { cn } from "@/lib/cn";
+
 type DialProps = {
   /** 0 → 1, how much of the current timer has elapsed. */
   progress: number;
@@ -14,18 +16,21 @@ export function Dial({ progress, running, children }: DialProps) {
   const lit = Math.floor(progress * TICKS);
 
   return (
-    <div className={`dial${running ? " running" : ""}`}>
-      <svg viewBox="0 0 300 300" aria-hidden="true">
+    <div className="@container relative mx-auto aspect-square w-[min(100%,360px)] max-w-full">
+      <svg viewBox="0 0 300 300" aria-hidden="true" className="absolute inset-0 size-full overflow-visible">
         {Array.from({ length: TICKS }, (_, i) => {
           const a = (i / TICKS) * Math.PI * 2 - Math.PI / 2;
           const major = i % 5 === 0;
           const r1 = 140;
           const r2 = major ? 126 : 132;
-          const cls = `tick${i < lit ? " on" : ""}${running && i === lit ? " head" : ""}`;
+          const head = running && i === lit;
           return (
             <line
               key={i}
-              className={cls}
+              className={cn(
+                "transition-[stroke] duration-300",
+                head ? "stroke-bright" : i < lit ? "stroke-accent" : "stroke-line-2",
+              )}
               x1={150 + Math.cos(a) * r1}
               y1={150 + Math.sin(a) * r1}
               x2={150 + Math.cos(a) * r2}
@@ -35,9 +40,9 @@ export function Dial({ progress, running, children }: DialProps) {
             />
           );
         })}
-        <circle className="track" cx="150" cy="150" r={R} fill="none" strokeWidth="2" />
+        <circle className="stroke-line" cx="150" cy="150" r={R} fill="none" strokeWidth="2" />
         <circle
-          className="arc"
+          className="stroke-accent drop-shadow-[0_0_6px_var(--accent)] transition-[stroke-dashoffset,stroke] duration-[250ms] ease-linear"
           cx="150"
           cy="150"
           r={R}
@@ -47,9 +52,20 @@ export function Dial({ progress, running, children }: DialProps) {
           strokeDashoffset={C * (1 - progress)}
           transform="rotate(-90 150 150)"
         />
-        <circle className="orbit" cx="150" cy="150" r="104" fill="none" strokeWidth="1" strokeDasharray="2 7" />
+        <circle
+          className={cn(
+            "origin-center animate-orbit [transform-box:fill-box]",
+            running ? "stroke-accent/40 [animation-play-state:running]" : "stroke-line-2 [animation-play-state:paused]",
+          )}
+          cx="150"
+          cy="150"
+          r="104"
+          fill="none"
+          strokeWidth="1"
+          strokeDasharray="2 7"
+        />
       </svg>
-      <div className="face">{children}</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-[2cqi] text-center">{children}</div>
     </div>
   );
 }

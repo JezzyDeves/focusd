@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { clamp } from "@/lib/pomodoro";
+import { ConfigRow } from "./ConfigRow";
 
 type StepperProps = {
   id: string;
@@ -12,6 +13,9 @@ type StepperProps = {
   unit: string;
   onChange: (value: number) => void;
 };
+
+const stepBtn =
+  "focus-ring size-10 cursor-pointer bg-panel-2 text-lg leading-none font-medium text-ink transition-colors enabled:hover:bg-accent enabled:hover:text-void disabled:cursor-default disabled:text-line-2";
 
 /** A labelled number input with − / + buttons, clamped to `limits`. */
 export function Stepper({ id, name, hint, value, limits, unit, onChange }: StepperProps) {
@@ -26,12 +30,9 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
   };
 
   return (
-    <div className="row">
-      <label htmlFor={id}>
-        <span className="key">{name}</span>:<span className="hint">{hint}</span>
-      </label>
-      <div className="step">
-        <button type="button" aria-label={`Decrease ${name}`} disabled={value <= min} onClick={() => onChange(clamp(value - 1, limits))}>
+    <ConfigRow name={name} hint={hint} htmlFor={id}>
+      <div className="flex items-center overflow-hidden rounded-xs border border-line-2">
+        <button type="button" className={stepBtn} aria-label={`Decrease ${name}`} disabled={value <= min} onClick={() => onChange(clamp(value - 1, limits))}>
           −
         </button>
         <input
@@ -41,6 +42,7 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
           min={min}
           max={max}
           value={draft ?? String(value)}
+          className="focus-ring h-10 w-12 border-x border-line-2 bg-void text-center text-base leading-none font-bold text-bright tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           onChange={(e) => {
             setDraft(e.target.value);
             const n = parseInt(e.target.value, 10);
@@ -51,11 +53,11 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
             if (e.key === "Enter") e.currentTarget.blur();
           }}
         />
-        <button type="button" aria-label={`Increase ${name}`} disabled={value >= max} onClick={() => onChange(clamp(value + 1, limits))}>
+        <button type="button" className={stepBtn} aria-label={`Increase ${name}`} disabled={value >= max} onClick={() => onChange(clamp(value + 1, limits))}>
           +
         </button>
       </div>
-      <span className="unit">{unit}</span>
-    </div>
+      <span className="text-xs text-dim">{unit}</span>
+    </ConfigRow>
   );
 }

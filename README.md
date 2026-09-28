@@ -33,7 +33,7 @@ Then open http://localhost:3000.
 
 - Next.js 16 (App Router) with TypeScript
 - React 19
-- Plain CSS with custom properties (`app/globals.css`)
+- Tailwind CSS v4: theme tokens (colors, fonts, shadows, animations) live in `@theme` in `app/globals.css`, and components are styled with utilities
 - Self-hosted fonts via Fontsource: VT323 for the digits, JetBrains Mono for everything else
 
 ## Project structure
@@ -42,20 +42,26 @@ Then open http://localhost:3000.
 app/
   layout.tsx          Root layout, fonts, metadata
   page.tsx            Renders the timer
-  globals.css         CRT theme and all component styles
+  globals.css         Tailwind @theme tokens, keyframes and the CRT/glitch effects
 components/pomodoro/
   Pomodoro.tsx        Main UI
   Dial.tsx            SVG clock face and progress arc
+  ConfigRow.tsx       Shared `key: value` row for the config panel
   Stepper.tsx         Number input with − / + buttons
   Toggle.tsx          [x] / [ ] boolean switch
   MatrixRain.tsx      Background canvas animation
 hooks/
   usePomodoro.ts      Timer engine, cycle logic, settings, stats, log, shortcuts
 lib/
+  cn.ts               Class-name join helper
   pomodoro.ts         Types, defaults, limits and formatters
   storage.ts          localStorage helpers
   audio.ts            Web Audio chiptune synth
 ```
+
+## Theming
+
+The accent color comes from `--accent`, which switches with `[data-mode]` on `<html>`. It's exposed to Tailwind through `@theme inline`, so `text-accent`, `bg-accent`, `stroke-accent/40` and the glow shadows all follow the current mode. A custom `desk:` breakpoint (60rem) switches to the two-column desktop layout.
 
 ## How the timer works
 
