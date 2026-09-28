@@ -1,0 +1,62 @@
+# focusd
+
+A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Next.js and React.
+
+## Features
+
+- **Configurable cycle**: set the focus length, the short and long break lengths, and how many sessions run before a long break. Settings are saved in `localStorage`.
+- **Mode-aware theme**: the accent turns green for focus, cyan for short breaks and amber for long breaks.
+- **CRT atmosphere**: a matrix-rain canvas, scanlines, a 60-tick dial that lights up as time passes, glitching digits on each start and a typewriter-style event log.
+- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files.
+- **Daily stats**: sessions completed and focus time for today.
+- **Auto-start**: optionally roll straight into the next timer.
+- **Stays awake**: requests a screen wake lock while a timer runs, where supported.
+- **Keyboard shortcuts**: `space` start/pause, `r` reset, `s` skip, `1` `2` `3` switch mode.
+
+## Getting started
+
+```bash
+npm install
+npm run dev
+```
+
+Then open http://localhost:3000.
+
+| Script              | What it does                     |
+| ------------------- | -------------------------------- |
+| `npm run dev`       | Start the dev server             |
+| `npm run build`     | Production build                 |
+| `npm start`         | Serve the production build       |
+| `npm run typecheck` | Type-check with `tsc --noEmit`   |
+
+## Stack
+
+- Next.js 16 (App Router) with TypeScript
+- React 19
+- Plain CSS with custom properties (`app/globals.css`)
+- Self-hosted fonts via Fontsource: VT323 for the digits, JetBrains Mono for everything else
+
+## Project structure
+
+```
+app/
+  layout.tsx          Root layout, fonts, metadata
+  page.tsx            Renders the timer
+  globals.css         CRT theme and all component styles
+components/pomodoro/
+  Pomodoro.tsx        Main UI
+  Dial.tsx            SVG clock face and progress arc
+  Stepper.tsx         Number input with − / + buttons
+  Toggle.tsx          [x] / [ ] boolean switch
+  MatrixRain.tsx      Background canvas animation
+hooks/
+  usePomodoro.ts      Timer engine, cycle logic, settings, stats, log, shortcuts
+lib/
+  pomodoro.ts         Types, defaults, limits and formatters
+  storage.ts          localStorage helpers
+  audio.ts            Web Audio chiptune synth
+```
+
+## How the timer works
+
+The timer counts down against an absolute end timestamp instead of counting ticks, so it stays accurate even when the browser throttles a background tab. After each focus session the cycle counter goes up. When it reaches the long-break interval the next break is a long one, and the counter resets after that long break ends. Skipping a session advances the cycle but doesn't count toward today's stats.
