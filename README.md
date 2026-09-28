@@ -7,11 +7,11 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Configurable cycle**: set the focus length, the short and long break lengths, and how many sessions run before a long break. Settings are saved in `localStorage`.
 - **Mode-aware theme**: the accent turns green for focus, cyan for short breaks and amber for long breaks.
 - **CRT atmosphere**: a matrix-rain canvas, scanlines, a 60-tick dial that lights up as time passes, glitching digits on each start and a typewriter-style event log.
-- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files.
+- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Turn on `repeat_alert` to keep it looping until you stop it with the main button or `esc`.
 - **Daily stats**: sessions completed and focus time for today.
 - **Auto-start**: optionally roll straight into the next timer.
 - **Stays awake**: requests a screen wake lock while a timer runs, where supported.
-- **Keyboard shortcuts**: `space` start/pause, `r` reset, `s` skip, `1` `2` `3` switch mode.
+- **Keyboard shortcuts**: `space` start/pause (or stop a ringing alert), `esc` stop the alert, `r` reset, `s` skip, `1` `2` `3` switch mode.
 
 ## Getting started
 

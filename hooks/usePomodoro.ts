@@ -1,15 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureAudio, playDone, playStart } from "@/lib/audio";
+import { ensureAudio, playDone, playStart, startAlarm, stopAlarm } from "@/lib/audio";
 import {
   DEFAULTS,
+  FLAG_NAMES,
   MODES,
   SETTING_NAMES,
   fmt,
   kindFor,
   stamp,
   today,
+  type FlagSetting,
   type LogKind,
   type LogLine,
   type Mode,
@@ -39,6 +41,8 @@ export function usePomodoro() {
   const [glitch, setGlitch] = useState(0);
   const [flash, setFlash] = useState(0);
   const [log, setLog] = useState<LogLine[]>([]);
+  /** The alert is looping and waiting to be stopped. */
+  const [alarming, setAlarming] = useState(false);
 
   const endAt = useRef<number | null>(null);
   const runningRef = useRef(false);
@@ -93,6 +97,20 @@ export function usePomodoro() {
   useEffect(() => {
     document.title = `${fmt(remaining)} · ${MODES[mode].label} · focusd`;
   }, [remaining, mode]);
+
+  useEffect(() => {
+    if (!alarming) return;
+    void startAlarm();
+    return stopAlarm;
+  }, [alarming]);
+
+  /** Stop a looping alert. Returns whether one was ringing. */
+  const silence = useCallback(() => {
+    if (!alarming) return false;
+    setAlarming(false);
+    push("alarm acknowledged");
+    return true;
+  }, [alarming, push]);
 
   // Keep the screen awake while a timer runs (ignored where unsupported).
   useEffect(() => {
@@ -156,7 +174,8 @@ export function usePomodoro() {
       if (skipped) {
         push(`skip :: ${MODES[mode].label} aborted → ${MODES[next].label}`, "warn");
       } else {
-        if (settings.sound) playDone();
+        if (settings.sound && settings.repeatAlert) setAlarming(true);
+        else if (settings.sound) playDone();
         setFlash((f) => f + 1);
         if (mode === "focus") push(`session ${nextCycle}/${settings.every} complete. +${settings.focus}m focus logged`, "ok");
         else push(`${MODES[mode].label} finished. back to work.`, kindFor(mode));
@@ -194,45 +213,55 @@ export function usePomodoro() {
 
   const start = useCallback(() => {
     ensureAudio();
+    silence();
     if (settings.sound) playStart();
     endAt.current = Date.now() + remaining;
     setRunning(true);
     setGlitch((g) => g + 1);
     const verb = remaining < total ? "resume" : "exec";
     push(`${verb} ${MODES[mode].label} :: ${fmt(remaining)} on the clock`, kindFor(mode));
-  }, [settings.sound, remaining, total, mode, push]);
+  }, [settings.sound, remaining, total, mode, push, silence]);
 
   const pause = useCallback(() => {
+    silence();
     const left = endAt.current ? Math.max(0, endAt.current - Date.now()) : remaining;
     endAt.current = null;
     setRemaining(left);
     setRunning(false);
     push(`SIGSTOP :: paused at ${fmt(left)}`, "warn");
-  }, [remaining, push]);
+  }, [remaining, push, silence]);
 
-  const toggle = useCallback(() => (running ? pause() : start()), [running, pause, start]);
+  /** The main button: stops a ringing alert first, otherwise starts or pauses. */
+  const toggle = useCallback(() => {
+    if (silence()) return;
+    if (running) pause();
+    else start();
+  }, [silence, running, pause, start]);
 
   const reset = useCallback(() => {
+    silence();
     endAt.current = null;
     setRunning(false);
     setRemaining(total);
     setGlitch((g) => g + 1);
     push(`reset ${MODES[mode].label} → ${fmt(total)}`);
-  }, [total, mode, push]);
+  }, [total, mode, push, silence]);
 
   const skip = useCallback(() => {
     ensureAudio();
+    silence();
     endAt.current = null;
     advance(true);
-  }, [advance]);
+  }, [advance, silence]);
 
   const pickMode = useCallback(
     (m: Mode) => {
       if (m === mode) return;
+      silence();
       push(`switch → ${MODES[m].label} (${settings[MODES[m].key]}m)`, kindFor(m));
       switchTo(m, false);
     },
-    [mode, settings, push, switchTo],
+    [mode, settings, push, switchTo, silence],
   );
 
   const setNumber = useCallback(
@@ -256,14 +285,15 @@ export function usePomodoro() {
   );
 
   const setFlag = useCallback(
-    (key: "autoStart" | "sound", val: boolean) => {
+    (key: FlagSetting, val: boolean) => {
       setSettings((s) => ({ ...s, [key]: val }));
-      push(`config :: ${key === "autoStart" ? "auto_start" : key} = ${val}`);
+      push(`config :: ${FLAG_NAMES[key]} = ${val}`);
+      if (!val && key !== "autoStart") silence();
     },
-    [push],
+    [push, silence],
   );
 
-  // Keyboard shortcuts: space start/pause, r reset, s skip, 1/2/3 mode.
+  // Keyboard shortcuts: space start/pause (or stop alarm), esc stop alarm, r reset, s skip, 1/2/3 mode.
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     keys.current = (e) => {
@@ -272,13 +302,14 @@ export function usePomodoro() {
       if (e.code === "Space" && tag !== "button") {
         e.preventDefault();
         toggle();
-      } else if (e.key === "r") reset();
+      } else if (e.key === "Escape") silence();
+      else if (e.key === "r") reset();
       else if (e.key === "s") skip();
       else if (e.key === "1") pickMode("focus");
       else if (e.key === "2") pickMode("short");
       else if (e.key === "3") pickMode("long");
     };
-  }, [toggle, reset, skip, pickMode]);
+  }, [toggle, silence, reset, skip, pickMode]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => keys.current(e);
     window.addEventListener("keydown", handler);
@@ -289,6 +320,7 @@ export function usePomodoro() {
     settings,
     mode,
     running,
+    alarming,
     remaining,
     total,
     progress,
@@ -297,6 +329,6 @@ export function usePomodoro() {
     glitch,
     flash,
     log,
-    actions: { start, pause, toggle, reset, skip, pickMode, setNumber, setFlag },
+    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag },
   };
 }

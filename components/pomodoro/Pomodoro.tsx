@@ -37,7 +37,7 @@ function Clock() {
 }
 
 export function Pomodoro() {
-  const { settings, mode, running, remaining, total, progress, cycle, stats, glitch, flash, log, actions } = usePomodoro();
+  const { settings, mode, running, alarming, remaining, total, progress, cycle, stats, glitch, flash, log, actions } = usePomodoro();
   const [configOpen, setConfigOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +50,7 @@ export function Pomodoro() {
   const shown = Math.min(cycle, every);
   const digits = fmt(remaining);
   const paused = !running && remaining < total;
-  const status = running ? "RUNNING" : paused ? "PAUSED" : "READY";
+  const status = alarming ? "TIME_UP" : running ? "RUNNING" : paused ? "PAUSED" : "READY";
 
   let caption: React.ReactNode;
   if (mode === "focus") {
@@ -153,9 +153,13 @@ export function Pomodoro() {
             <button
               type="button"
               onClick={actions.toggle}
-              className={cn(btn, "border-accent text-[15px] font-bold shadow-cta hover:shadow-cta-hover", running ? "bg-transparent text-accent" : "bg-accent text-void")}
+              className={cn(
+                btn,
+                "border-accent text-[15px] font-bold shadow-cta hover:shadow-cta-hover",
+                alarming ? "animate-pulse bg-accent text-void" : running ? "bg-transparent text-accent" : "bg-accent text-void",
+              )}
             >
-              {running ? "‖ pause" : paused ? "▶ resume" : "▶ start"}
+              {alarming ? "■ stop alarm" : running ? "‖ pause" : paused ? "▶ resume" : "▶ start"}
             </button>
             <button type="button" onClick={actions.skip} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
               skip ⇥
@@ -163,7 +167,7 @@ export function Pomodoro() {
           </div>
 
           <div className="text-center text-[11px] tracking-[0.03em] text-dim [@media(hover:none)]:hidden [&_kbd]:rounded-xs [&_kbd]:border [&_kbd]:border-line-2 [&_kbd]:px-[5px] [&_kbd]:py-px [&_kbd]:font-[inherit] [&_kbd]:text-ink">
-            <kbd>space</kbd> start/pause · <kbd>r</kbd> reset · <kbd>s</kbd> skip · <kbd>1</kbd>
+            <kbd>space</kbd> start/pause · <kbd>esc</kbd> stop alarm · <kbd>r</kbd> reset · <kbd>s</kbd> skip · <kbd>1</kbd>
             <kbd>2</kbd>
             <kbd>3</kbd> mode
           </div>
@@ -191,6 +195,7 @@ export function Pomodoro() {
                 <Stepper id="cfg-every" name="long_every" hint="sessions per cycle" value={settings.every} limits={LIMITS.every} unit="sess" onChange={(v) => actions.setNumber("every", v)} />
                 <Toggle name="auto_start" hint="roll into the next timer" on={settings.autoStart} onToggle={() => actions.setFlag("autoStart", !settings.autoStart)} />
                 <Toggle name="sound" hint="chiptune alert when time's up" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
+                <Toggle name="repeat_alert" hint="loop the alert until stopped" on={settings.repeatAlert} onToggle={() => actions.setFlag("repeatAlert", !settings.repeatAlert)} />
               </div>
             )}
           </section>
