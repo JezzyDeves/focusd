@@ -1,31 +1,50 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureAudio, playDone, playStart, startAlarm, stopAlarm } from "@/lib/audio";
+import { ensureAudio, playCue, playDone, playStart, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
+import { buzzCue, buzzDone } from "@/lib/haptics";
 import {
   DEFAULTS,
   FLAG_NAMES,
+  HEADS_UP_MIN,
   MODES,
+  PARK_INPUT_ID,
   SETTING_NAMES,
+  SETTING_UNITS,
+  TEXT_MAX,
   fmt,
   kindFor,
+  nextMode,
   stamp,
   today,
   type FlagSetting,
+  type Intent,
   type LogKind,
   type LogLine,
   type Mode,
   type NumericSetting,
+  type Parked,
   type Settings,
   type Stats,
 } from "@/lib/pomodoro";
-import { freshStats, loadSettings, loadStats, saveSettings, saveStats } from "@/lib/storage";
+import {
+  freshStats,
+  loadIntent,
+  loadParked,
+  loadSettings,
+  loadStats,
+  saveIntent,
+  saveParked,
+  saveSettings,
+  saveStats,
+} from "@/lib/storage";
 
 const TICK_MS = 200;
 const MAX_LOG = 60;
 
 /**
- * The Pomodoro engine: timer state, cycle tracking, settings, stats and the event log.
+ * The Pomodoro engine: timer state, cycle tracking, settings, stats, the event log,
+ * the session intent and the parking lot for stray thoughts.
  *
  * Time is tracked against an absolute end timestamp rather than by counting ticks,
  * so the timer stays accurate when the tab is throttled in the background.
@@ -43,14 +62,22 @@ export function usePomodoro() {
   const [log, setLog] = useState<LogLine[]>([]);
   /** The alert is looping and waiting to be stopped. */
   const [alarming, setAlarming] = useState(false);
+  /** Minutes-left mark of the last heads-up for the current timer, or null before the first. */
+  const [cued, setCued] = useState<number | null>(null);
+  const [intent, setIntent] = useState<Intent>({ task: "", then: "" });
+  const [parked, setParked] = useState<Parked[]>([]);
 
   const endAt = useRef<number | null>(null);
   const runningRef = useRef(false);
   const logId = useRef(0);
+  const parkId = useRef(0);
+  /** Time left at the previous tick, so heads-up cues fire once, when a mark is crossed. */
+  const prevLeft = useRef(0);
 
   const durOf = useCallback((m: Mode) => settings[MODES[m].key] * 60_000, [settings]);
   const total = durOf(mode);
   const progress = Math.min(1, Math.max(0, 1 - remaining / total));
+  const next = nextMode(mode, cycle, settings.every);
 
   const line = useCallback(
     (msg: string, kind: LogKind = "sys"): LogLine => ({ id: ++logId.current, t: stamp(), msg, kind }),
@@ -67,6 +94,10 @@ export function usePomodoro() {
     setSettings(s);
     setRemaining(s.focus * 60_000);
     setStats(loadStats());
+    setIntent(loadIntent());
+    const p = loadParked();
+    setParked(p);
+    parkId.current = p.reduce((max, x) => Math.max(max, x.id), 0);
     setLog([
       line("focusd v2.6.0 :: boot sequence"),
       line("mount /dev/attention ........ ok", "ok"),
@@ -86,6 +117,18 @@ export function usePomodoro() {
   }, [stats, hydrated]);
 
   useEffect(() => {
+    if (hydrated) saveIntent(intent);
+  }, [intent, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) saveParked(parked);
+  }, [parked, hydrated]);
+
+  useEffect(() => {
+    setAudioPrefs(settings.volume, settings.softTone);
+  }, [settings.volume, settings.softTone]);
+
+  useEffect(() => {
     runningRef.current = running;
   }, [running]);
 
@@ -93,6 +136,11 @@ export function usePomodoro() {
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
   }, [mode]);
+
+  // Sensory switches, read by CSS: [data-motion="off"] stills animation like prefers-reduced-motion.
+  useEffect(() => {
+    document.documentElement.dataset.motion = settings.motion ? "on" : "off";
+  }, [settings.motion]);
 
   useEffect(() => {
     document.title = `${fmt(remaining)} · ${MODES[mode].label} · focusd`;
@@ -135,9 +183,11 @@ export function usePomodoro() {
       const d = durOf(next);
       setMode(next);
       setRemaining(d);
+      setCued(null);
       setGlitch((g) => g + 1);
       if (autoRun) {
         endAt.current = Date.now() + d;
+        prevLeft.current = d;
         setRunning(true);
       } else {
         endAt.current = null;
@@ -150,12 +200,11 @@ export function usePomodoro() {
   /** Move to the next timer in the cycle. `skipped` means the user cut the current one short. */
   const advance = useCallback(
     (skipped: boolean) => {
-      let next: Mode;
+      const to = nextMode(mode, cycle, settings.every);
       let nextCycle = cycle;
 
       if (mode === "focus") {
         nextCycle = cycle + 1;
-        next = nextCycle >= settings.every ? "long" : "short";
         if (!skipped) {
           const add = durOf("focus");
           setStats((s) => {
@@ -163,36 +212,60 @@ export function usePomodoro() {
             return { ...base, sessions: base.sessions + 1, focusMs: base.focusMs + add };
           });
         }
-      } else {
-        next = "focus";
-        if (mode === "long") nextCycle = 0;
+      } else if (mode === "long") {
+        nextCycle = 0;
       }
       setCycle(nextCycle);
 
       const autoRun = settings.autoStart && runningRef.current;
 
       if (skipped) {
-        push(`skip :: ${MODES[mode].label} aborted → ${MODES[next].label}`, "warn");
+        push(`skip :: ${MODES[mode].label} aborted → ${MODES[to].label}`, "warn");
       } else {
         if (settings.sound && settings.repeatAlert) setAlarming(true);
         else if (settings.sound) playDone();
-        setFlash((f) => f + 1);
+        if (settings.vibrate) buzzDone();
+        if (settings.flash) setFlash((f) => f + 1);
         if (mode === "focus") push(`session ${nextCycle}/${settings.every} complete. +${settings.focus}m focus logged`, "ok");
         else push(`${MODES[mode].label} finished. back to work.`, kindFor(mode));
-        if (next === "long") push(`cycle complete :: long_break unlocked (${settings.long}m)`, "long");
-        else if (next === "short") push(`short_break queued (${settings.short}m)`, "brk");
+        if (to === "long") push(`cycle complete :: long_break unlocked (${settings.long}m)`, "long");
+        else if (to === "short") push(`short_break queued (${settings.short}m)`, "brk");
       }
-      if (autoRun) push(`auto_start :: ${MODES[next].label} running`);
+      if (mode === "focus" && parked.length > 0) {
+        push(`parking_lot :: ${parked.length} thought${parked.length === 1 ? "" : "s"} to review on your break`, "brk");
+      }
+      if (autoRun) push(`auto_start :: ${MODES[to].label} running`);
 
-      switchTo(next, autoRun);
+      switchTo(to, autoRun);
     },
-    [cycle, mode, settings, durOf, push, switchTo],
+    [cycle, mode, settings, parked.length, durOf, push, switchTo],
+  );
+
+  /** Fire a heads-up when the time left crosses one of the HEADS_UP_MIN marks. */
+  const cue = useCallback(
+    (before: number, left: number) => {
+      if (!settings.headsUp) return;
+      // A throttled background tab can jump past several marks in one tick; only the nearest one matters.
+      const crossed = HEADS_UP_MIN.filter((m) => {
+        const at = m * 60_000;
+        return at < total && before > at && left <= at;
+      });
+      if (crossed.length === 0) return;
+      const m = Math.min(...crossed);
+      setCued(m);
+      if (settings.sound) playCue();
+      if (settings.vibrate) buzzCue();
+      push(`heads_up :: ${m}m left in ${MODES[mode].label} · next up: ${MODES[next].label}`, kindFor(next));
+    },
+    [settings.headsUp, settings.sound, settings.vibrate, total, mode, next, push],
   );
 
   const advanceRef = useRef(advance);
+  const cueRef = useRef(cue);
   useEffect(() => {
     advanceRef.current = advance;
-  }, [advance]);
+    cueRef.current = cue;
+  }, [advance, cue]);
 
   // Ticking engine.
   useEffect(() => {
@@ -206,6 +279,8 @@ export function usePomodoro() {
         advanceRef.current(false);
       } else {
         setRemaining(left);
+        cueRef.current(prevLeft.current, left);
+        prevLeft.current = left;
       }
     }, TICK_MS);
     return () => window.clearInterval(id);
@@ -216,11 +291,18 @@ export function usePomodoro() {
     silence();
     if (settings.sound) playStart();
     endAt.current = Date.now() + remaining;
+    prevLeft.current = remaining;
     setRunning(true);
     setGlitch((g) => g + 1);
-    const verb = remaining < total ? "resume" : "exec";
-    push(`${verb} ${MODES[mode].label} :: ${fmt(remaining)} on the clock`, kindFor(mode));
-  }, [settings.sound, remaining, total, mode, push, silence]);
+    const fresh = remaining >= total;
+    push(`${fresh ? "exec" : "resume"} ${MODES[mode].label} :: ${fmt(remaining)} on the clock`, kindFor(mode));
+    if (fresh && mode === "focus" && settings.intention) {
+      const task = intent.task.trim();
+      const then = intent.then.trim();
+      if (task) push(`task :: ${task}`, "ok");
+      if (then) push(`if distracted → ${then}`);
+    }
+  }, [settings.sound, settings.intention, intent, remaining, total, mode, push, silence]);
 
   const pause = useCallback(() => {
     silence();
@@ -243,6 +325,7 @@ export function usePomodoro() {
     endAt.current = null;
     setRunning(false);
     setRemaining(total);
+    setCued(null);
     setGlitch((g) => g + 1);
     push(`reset ${MODES[mode].label} → ${fmt(total)}`);
   }, [total, mode, push, silence]);
@@ -268,13 +351,13 @@ export function usePomodoro() {
     (key: NumericSetting, val: number) => {
       if (settings[key] === val) return;
       setSettings((s) => ({ ...s, [key]: val }));
-      const unit = key === "every" ? " sessions" : "m";
-      const msg = `config :: ${SETTING_NAMES[key]} = ${val}${unit}`;
+      const msg = `config :: ${SETTING_NAMES[key]} = ${val}${SETTING_UNITS[key]}`;
       if (MODES[mode].key === key) {
         if (running) {
           push(`${msg} (applies next session)`);
         } else {
           setRemaining(val * 60_000);
+          setCued(null);
           push(msg);
         }
       } else {
@@ -288,12 +371,34 @@ export function usePomodoro() {
     (key: FlagSetting, val: boolean) => {
       setSettings((s) => ({ ...s, [key]: val }));
       push(`config :: ${FLAG_NAMES[key]} = ${val}`);
-      if (!val && key !== "autoStart") silence();
+      if (!val && (key === "sound" || key === "repeatAlert")) silence();
     },
     [push, silence],
   );
 
-  // Keyboard shortcuts: space start/pause (or stop alarm), esc stop alarm, r reset, s skip, 1/2/3 mode.
+  const editIntent = useCallback((field: keyof Intent, val: string) => {
+    setIntent((i) => ({ ...i, [field]: val.slice(0, TEXT_MAX) }));
+  }, []);
+
+  /** Set a stray thought aside without leaving the session. */
+  const park = useCallback(
+    (raw: string) => {
+      const text = raw.trim().slice(0, TEXT_MAX);
+      if (!text) return;
+      setParked((p) => [...p, { id: ++parkId.current, t: stamp(), text }]);
+      push("parking_lot :: thought parked. back to it.");
+    },
+    [push],
+  );
+
+  const unpark = useCallback((id: number) => setParked((p) => p.filter((x) => x.id !== id)), []);
+
+  const clearParked = useCallback(() => {
+    setParked([]);
+    push("parking_lot :: cleared");
+  }, [push]);
+
+  // Keyboard shortcuts: space start/pause (or stop alarm), esc stop alarm, r reset, s skip, 1/2/3 mode, n park a thought.
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     keys.current = (e) => {
@@ -308,6 +413,11 @@ export function usePomodoro() {
       else if (e.key === "1") pickMode("focus");
       else if (e.key === "2") pickMode("short");
       else if (e.key === "3") pickMode("long");
+      else if (e.key === "n") {
+        // Keep the "n" from landing in the input it focuses.
+        e.preventDefault();
+        document.getElementById(PARK_INPUT_ID)?.focus();
+      }
     };
   }, [toggle, silence, reset, skip, pickMode]);
   useEffect(() => {
@@ -325,10 +435,14 @@ export function usePomodoro() {
     total,
     progress,
     cycle,
+    next,
+    cued,
     stats,
     glitch,
     flash,
     log,
-    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag },
+    intent,
+    parked,
+    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, editIntent, park, unpark, clearParked },
   };
 }

@@ -15,11 +15,43 @@ export type Settings = {
   sound: boolean;
   /** Keep repeating the alert until it's stopped. */
   repeatAlert: boolean;
+  /** Alert volume, 1–10. */
+  volume: number;
+  /** Use a gentle sine chime instead of the square-wave chiptune. */
+  softTone: boolean;
+  /** Vibrate on alerts, where the device supports it. */
+  vibrate: boolean;
+  /** Give a soft heads-up at each of HEADS_UP_MIN before a timer ends. */
+  headsUp: boolean;
+  /** Ask what each focus session is for, plus an if-then plan for distractions. */
+  intention: boolean;
+  /** Matrix rain, glitching digits, blinking and other animation. */
+  motion: boolean;
+  /** CRT scanlines and vignette over the screen. */
+  scanlines: boolean;
+  /** Flash the screen when a timer ends. */
+  flash: boolean;
 };
 
-export type FlagSetting = "autoStart" | "sound" | "repeatAlert";
+export type FlagSetting =
+  | "autoStart"
+  | "sound"
+  | "repeatAlert"
+  | "softTone"
+  | "vibrate"
+  | "headsUp"
+  | "intention"
+  | "motion"
+  | "scanlines"
+  | "flash";
 
-export type NumericSetting = "focus" | "short" | "long" | "every";
+export type NumericSetting = "focus" | "short" | "long" | "every" | "volume";
+
+/** What the next focus session is for, and what to do when distracted. */
+export type Intent = { task: string; then: string };
+
+/** A stray thought set aside mid-session to deal with later. */
+export type Parked = { id: number; t: string; text: string };
 
 export type Stats = { date: string; sessions: number; focusMs: number };
 
@@ -34,13 +66,31 @@ export const DEFAULTS: Settings = {
   autoStart: false,
   sound: true,
   repeatAlert: false,
+  volume: 6,
+  softTone: false,
+  vibrate: false,
+  headsUp: true,
+  intention: true,
+  motion: true,
+  scanlines: true,
+  flash: true,
 };
+
+/** Minutes before the end of a timer at which the heads-up cue fires. Cues that don't fit inside a timer are skipped. */
+export const HEADS_UP_MIN = [5, 1];
+
+/** Max length of an intent field or a parked thought. */
+export const TEXT_MAX = 140;
+
+/** The parking-lot input, focused by the `n` shortcut. */
+export const PARK_INPUT_ID = "park-input";
 
 export const LIMITS: Record<NumericSetting, [number, number]> = {
   focus: [1, 99],
   short: [1, 30],
   long: [1, 60],
   every: [2, 8],
+  volume: [1, 10],
 };
 
 export const MODES: Record<Mode, { label: string; tag: string; key: NumericSetting }> = {
@@ -54,13 +104,34 @@ export const SETTING_NAMES: Record<NumericSetting, string> = {
   short: "short_break_len",
   long: "long_break_len",
   every: "long_break_every",
+  volume: "volume",
+};
+
+/** Unit suffix used when a numeric setting is logged. */
+export const SETTING_UNITS: Record<NumericSetting, string> = {
+  focus: "m",
+  short: "m",
+  long: "m",
+  every: " sessions",
+  volume: "/10",
 };
 
 export const FLAG_NAMES: Record<FlagSetting, string> = {
   autoStart: "auto_start",
   sound: "sound",
   repeatAlert: "repeat_alert",
+  softTone: "soft_tone",
+  vibrate: "vibrate",
+  headsUp: "heads_up",
+  intention: "intention",
+  motion: "motion",
+  scanlines: "scanlines",
+  flash: "flash",
 };
+
+/** The timer that follows `mode` when `cycle` focus sessions of the current round are done. */
+export const nextMode = (mode: Mode, cycle: number, every: number): Mode =>
+  mode === "focus" ? (cycle + 1 >= every ? "long" : "short") : "focus";
 
 /** Log color for a given mode. */
 export const kindFor = (m: Mode): LogKind => (m === "focus" ? "ok" : m === "long" ? "long" : "brk");
