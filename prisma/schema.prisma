@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+// Connection URLs live in prisma.config.ts (CLI) and lib/db.ts (app).
+datasource db {
+  provider = "postgresql"
+}
+
+enum Mode {
+  focus
+  short
+  long
+}
+
+/// A private focus room. Who's in it is live presence over Supabase Realtime and is never stored.
+/// This row only lets a link be checked, and holds the host's current "start together" session.
+model Room {
+  id           String    @id
+  /// SHA-256 of the host token. The token itself only lives in the host's browser.
+  hostHash     String    @map("host_hash")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  /// Bumped when the room is used, so rooms left idle can be deleted.
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  syncMode     Mode?     @map("sync_mode")
+  syncStartAt  DateTime? @map("sync_start_at")
+  syncEndAt    DateTime? @map("sync_end_at")
+  /// Whether the synced session asks for a check-in and a check-out.
+  syncCheckins Boolean   @default(false) @map("sync_checkins")
+
+  @@map("rooms")
+}

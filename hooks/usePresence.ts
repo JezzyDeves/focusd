@@ -1,98 +1,119 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { LogKind, Mode } from "@/lib/pomodoro";
-import { closeRoom, countPeers, openRoom, presenceConfigured, type PresenceMeta, type Room } from "@/lib/presence";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { LogKind } from "@/lib/pomodoro";
+import { closeChannel, openChannel, peersOf, presenceConfigured, randomKey, type Joined } from "@/lib/presence";
 
 export type PresenceStatus = "off" | "connecting" | "online" | "offline";
+
+type Options<M, P> = {
+  /** The channel to join, or null to stay disconnected. */
+  topic: string | null;
+  /** Prefix for log lines, e.g. `focus_room`. */
+  label: string;
+  /** What this client shares. Sent on join and again only when it changes. */
+  meta: M;
+  /** Validates a peer's payload. */
+  parse: (raw: unknown) => P | null;
+  log: (msg: string, kind?: LogKind) => void;
+  onBroadcast?: (event: string, payload: unknown) => void;
+};
 
 const s = (n: number) => (n === 1 ? "" : "s");
 
 /**
- * The `focus_room`: joins one global presence channel and counts the other clients in a running focus session.
+ * Join a Supabase Realtime presence channel while `topic` is set, and list the other clients in it.
  *
- * Nothing connects while `enabled` is false. While on, the only thing sent is `{ mode, running }`, and only
- * when one of them changes, never per tick. A dropped connection shows as `offline` and never touches the timer.
+ * Nothing connects while `topic` is null. `meta` is tracked when joining and whenever it changes, never per tick.
+ * A dropped connection shows as `offline` and never touches the timer; the client keeps retrying on its own.
  */
-export function usePresence(enabled: boolean, mode: Mode, running: boolean, log: (msg: string, kind?: LogKind) => void) {
+export function usePresence<M extends object, P>({ topic, label, meta, parse, log, onBroadcast }: Options<M, P>) {
   const [status, setStatus] = useState<PresenceStatus>("off");
-  const [focusing, setFocusing] = useState(0);
-  const room = useRef<Room | null>(null);
+  const [peers, setPeers] = useState<{ key: string; meta: P }[]>([]);
+  const joinedRef = useRef<Joined | null>(null);
   const online = useRef(false);
-  const meta = useRef<PresenceMeta>({ mode, running });
-  const logRef = useRef(log);
+  const metaJson = JSON.stringify(meta);
+  const latest = useRef({ metaJson, parse, log, onBroadcast });
 
   useEffect(() => {
-    logRef.current = log;
-  }, [log]);
+    latest.current = { metaJson, parse, log, onBroadcast };
+  });
 
   useEffect(() => {
-    if (!enabled) {
+    if (!topic) {
       setStatus("off");
       return;
     }
     if (!presenceConfigured) {
       setStatus("offline");
-      logRef.current("focus_room :: not configured (set the NEXT_PUBLIC_SUPABASE_* env vars)", "warn");
+      latest.current.log(`${label} :: not configured (set the NEXT_PUBLIC_SUPABASE_* env vars)`, "warn");
       return;
     }
 
     let cancelled = false;
     let joined = false;
-    let lastStatus: PresenceStatus = "connecting";
+    let last: PresenceStatus = "connecting";
     const set = (next: PresenceStatus) => {
-      lastStatus = next;
+      last = next;
       online.current = next === "online";
       setStatus(next);
     };
+    const offline = () => {
+      if (last === "offline") return;
+      set("offline");
+      latest.current.log(`${label} :: offline · timer unaffected`, "warn");
+    };
     set("connecting");
 
-    openRoom()
-      .then((r) => {
-        if (cancelled) return closeRoom(r);
-        room.current = r;
-        r.channel
-          .on("presence", { event: "sync" }, () => {
-            const peers = countPeers(r.channel, r.key);
-            setFocusing(peers.focusing);
-            if (!joined) {
-              joined = true;
-              logRef.current(`focus_room :: joined · ${peers.online} other${s(peers.online)} online`, "ok");
-            }
-          })
+    const key = randomKey();
+    openChannel(topic, key)
+      .then((j) => {
+        if (cancelled) return closeChannel(j);
+        joinedRef.current = j;
+        const ch = j.channel;
+        ch.on("presence", { event: "sync" }, () => {
+          const list = peersOf(ch, key, latest.current.parse);
+          setPeers(list);
+          if (!joined) {
+            joined = true;
+            latest.current.log(`${label} :: joined · ${list.length} other${s(list.length)} online`, "ok");
+          }
+        })
+          .on("broadcast", { event: "*" }, ({ event, payload }) => latest.current.onBroadcast?.(event, payload))
           .subscribe((state) => {
             if (cancelled) return;
             if (state === "SUBSCRIBED") {
-              if (lastStatus === "offline") logRef.current("focus_room :: reconnected", "ok");
+              if (last === "offline") latest.current.log(`${label} :: reconnected`, "ok");
               set("online");
-              void r.channel.track(meta.current);
-            } else if (lastStatus !== "offline") {
-              // CHANNEL_ERROR, TIMED_OUT or CLOSED. The client keeps retrying on its own.
-              set("offline");
-              logRef.current("focus_room :: offline · timer unaffected", "warn");
+              void ch.track(JSON.parse(latest.current.metaJson));
+            } else {
+              // CHANNEL_ERROR, TIMED_OUT or CLOSED.
+              offline();
             }
           });
       })
       .catch(() => {
-        if (cancelled) return;
-        set("offline");
-        logRef.current("focus_room :: offline · timer unaffected", "warn");
+        if (!cancelled) offline();
       });
 
     return () => {
       cancelled = true;
-      if (room.current) closeRoom(room.current);
-      room.current = null;
+      if (joinedRef.current) closeChannel(joinedRef.current);
+      joinedRef.current = null;
       online.current = false;
-      setFocusing(0);
+      setPeers([]);
     };
-  }, [enabled]);
+  }, [topic, label]);
 
-  // Publish only on a real change (start, pause, mode switch). Joining tracks the latest value itself.
+  // Publish only on a real change. Joining tracks the latest value itself.
   useEffect(() => {
-    meta.current = { mode, running };
-    if (online.current) void room.current?.channel.track(meta.current);
-  }, [mode, running]);
+    if (online.current) void joinedRef.current?.channel.track(JSON.parse(metaJson));
+  }, [metaJson]);
 
-  return { status, focusing };
+  /** Broadcast a message to everyone else in the channel. */
+  const send = useCallback((event: string, payload: object = {}) => {
+    if (online.current) void joinedRef.current?.channel.send({ type: "broadcast", event, payload });
+  }, []);
+
+  return { status, peers, send };
 }

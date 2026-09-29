@@ -20,3 +20,6 @@ npm-debug.log*
 
 # vercel
 .vercel
+
+# prisma client
+lib/generated/

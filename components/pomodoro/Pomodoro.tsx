@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { usePomodoro } from "@/hooks/usePomodoro";
 import { usePresence } from "@/hooks/usePresence";
+import { useRoom } from "@/hooks/useRoom";
 import { cn } from "@/lib/cn";
 import { LIMITS, MODES, fmt, fmtDur, stamp, type LogKind, type Mode } from "@/lib/pomodoro";
+import { GLOBAL_TOPIC, parseGlobalMeta } from "@/lib/presence";
 import { Dial } from "./Dial";
 import { IntentPanel } from "./IntentPanel";
 import { MatrixRain } from "./MatrixRain";
 import { ParkingLot } from "./ParkingLot";
+import { RoomPanel } from "./RoomPanel";
 import { Stepper } from "./Stepper";
 import { fileName, panel, panelHead } from "./styles";
 import { Toggle } from "./Toggle";
@@ -42,9 +45,17 @@ function Clock() {
 }
 
 export function Pomodoro() {
-  const { settings, mode, running, alarming, remaining, total, progress, cycle, next, cued, stats, glitch, flash, log, intent, parked, actions } =
+  const { settings, mode, running, endsAt, alarming, remaining, total, progress, cycle, next, cued, stats, glitch, flash, log, intent, parked, actions } =
     usePomodoro();
-  const room = usePresence(settings.focusRoom, mode, running, actions.log);
+  const everyone = usePresence({
+    topic: settings.focusRoom ? GLOBAL_TOPIC : null,
+    label: "focus_room",
+    meta: { mode, running },
+    parse: parseGlobalMeta,
+    log: actions.log,
+  });
+  const focusing = everyone.peers.filter((p) => p.meta.mode === "focus" && p.meta.running).length;
+  const room = useRoom({ settings, mode, running, endsAt, remaining, task: intent.task, syncStart: actions.syncStart, log: actions.log });
   const [configOpen, setConfigOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -82,10 +93,10 @@ export function Pomodoro() {
     );
   }
 
-  const roomLine =
-    room.status === "online"
-      ? `▲ ${room.focusing} other${room.focusing === 1 ? "" : "s"} focusing`
-      : room.status === "connecting"
+  const everyoneLine =
+    everyone.status === "online"
+      ? `▲ ${focusing} other${focusing === 1 ? "" : "s"} focusing`
+      : everyone.status === "connecting"
         ? "▲ connecting…"
         : "▲ offline";
 
@@ -159,7 +170,7 @@ export function Pomodoro() {
               })}
             </div>
             <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
-            {room.status !== "off" && <div className="text-center text-[11px] tracking-[0.04em] text-dim tabular-nums">{roomLine}</div>}
+            {everyone.status !== "off" && <div className="text-center text-[11px] tracking-[0.04em] text-dim tabular-nums">{everyoneLine}</div>}
           </div>
 
           {mode === "focus" && settings.intention && <IntentPanel intent={intent} onEdit={actions.editIntent} />}
@@ -192,6 +203,8 @@ export function Pomodoro() {
         </main>
 
         <aside className="grid min-w-0 content-start gap-[18px]">
+          {room.configured && <RoomPanel room={room} settings={settings} mode={mode} task={intent.task} />}
+
           <ParkingLot parked={parked} hideList={running && mode === "focus"} onPark={actions.park} onRemove={actions.unpark} onClear={actions.clearParked} />
 
           <section className={panel}>
@@ -226,7 +239,10 @@ export function Pomodoro() {
 
                 <ConfigComment>focus aids</ConfigComment>
                 <Toggle name="intention" hint="name the task before focusing" on={settings.intention} onToggle={() => actions.setFlag("intention", !settings.intention)} />
+
+                <ConfigComment>together</ConfigComment>
                 <Toggle name="focus_room" hint="see how many others are focusing" on={settings.focusRoom} onToggle={() => actions.setFlag("focusRoom", !settings.focusRoom)} />
+                <Toggle name="share_task" hint="show your task to your room" on={settings.shareTask} onToggle={() => actions.setFlag("shareTask", !settings.shareTask)} />
 
                 <ConfigComment>sensory</ConfigComment>
                 <Toggle name="motion" hint="rain, glitch and blinking" on={settings.motion} onToggle={() => actions.setFlag("motion", !settings.motion)} />

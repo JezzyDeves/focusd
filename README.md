@@ -11,7 +11,9 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Heads-up before the end**: `heads_up` plays a soft cue at 5 and 1 minutes left (skipping any that don't fit the timer), and the dial switches to `WRAP_UP` and shows what's next, so a session winds down instead of stopping abruptly.
 - **Session intention**: before a focus session, name the task and an if-then plan for distractions. Both are logged when the session starts. Turn this off with `intention`.
 - **Parking lot**: press `n` mid-session to jot down a stray thought and get back to work. The list stays hidden while you focus and comes back on your break.
-- **Focus room**: turn on `focus_room` to see how many other people are in a focus session right now (`▲ 3 others focusing`, under the dial). It's off by default, and nothing connects to a server until you turn it on. See [Focus room privacy](#focus-room-privacy).
+- **Focus room**: turn on `focus_room` to see how many other people are in a focus session right now (`▲ 3 others focusing`, under the dial). It's off by default, and nothing connects to a server until you turn it on. See [Privacy](#privacy).
+- **Rooms**: create a private room and share its link to focus alongside friends (virtual body doubling). The `~/room` panel lists who's there with an optional handle, their mode and their time left. Turn on `share_task` to show your task to the room.
+- **Start together**: whoever created a room is its host and can start a timer for everyone at once, with optional check-in ("what are you working on?") and check-out ("how did it go?") prompts. Joining late drops you into the session already running.
 - **Sensory controls**: turn off `motion` (matrix rain, glitch, blinking), `scanlines` or the end-of-timer `flash`. The OS reduced-motion setting is respected as well.
 - **Daily stats**: sessions completed and focus time for today.
 - **Auto-start**: optionally roll straight into the next timer.
@@ -36,7 +38,14 @@ npm run dev
 
 Then open http://localhost:3000.
 
-The timer works with no setup. The optional `focus_room` needs a [Supabase](https://supabase.com) project, used only for Realtime Presence (no tables, no auth). Copy `.env.example` to `.env.local` and fill in the project URL and publishable key (or the legacy anon key) from the Supabase dashboard. The app joins a public channel, so leave Realtime's public channel access allowed. Without these variables, turning on `focus_room` just shows `offline`.
+The timer works with no setup. `focus_room` and rooms need a [Supabase](https://supabase.com) project:
+
+1. Copy `.env.example` to `.env.local` and fill it in from the Supabase dashboard:
+   - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or the legacy anon key) for Realtime. The app joins public channels, so leave Realtime's public channel access allowed.
+   - `DATABASE_URL` (transaction pooler, port 6543) for the app, and `DIRECT_URL` (session pooler, port 5432, or the direct connection) for migrations. Rooms only.
+2. Run `npm run db:deploy` to create the `rooms` table.
+
+With only the Realtime variables, `focus_room` works and creating a room fails with a message in the log. With none of them, the room panel is hidden and `focus_room` shows `offline`.
 
 | Script              | What it does                     |
 | ------------------- | -------------------------------- |
@@ -44,6 +53,7 @@ The timer works with no setup. The optional `focus_room` needs a [Supabase](http
 | `npm run build`     | Production build                 |
 | `npm start`         | Serve the production build       |
 | `npm run typecheck` | Type-check with `tsc --noEmit`   |
+| `npm run db:deploy` | Apply Prisma migrations          |
 
 ## Stack
 
@@ -51,7 +61,8 @@ The timer works with no setup. The optional `focus_room` needs a [Supabase](http
 - React 19
 - Tailwind CSS v4: theme tokens (colors, fonts, shadows, animations) live in `@theme` in `app/globals.css`, and components are styled with utilities
 - Self-hosted fonts via Fontsource: VT323 for the digits, JetBrains Mono for everything else
-- `@supabase/realtime-js` for `focus_room` presence, loaded only when the toggle is on
+- `@supabase/realtime-js` for presence and broadcast, loaded only when `focus_room` is on or you join a room
+- Prisma 7 with `@prisma/adapter-pg` on Supabase Postgres, for rooms. The client is generated into `lib/generated/` on `npm install`.
 
 ## Project structure
 
@@ -59,12 +70,14 @@ The timer works with no setup. The optional `focus_room` needs a [Supabase](http
 app/
   layout.tsx          Root layout, fonts, metadata
   page.tsx            Renders the timer
+  api/rooms/          Create a room, look one up, and (host only) start a session for everyone
   globals.css         Tailwind @theme tokens, keyframes and the CRT/glitch effects
 components/pomodoro/
   Pomodoro.tsx        Main UI
   Dial.tsx            SVG clock face and progress arc
   IntentPanel.tsx     Task and if-then plan for the focus session
   ParkingLot.tsx      Stray-thought list
+  RoomPanel.tsx       Room invite, peer list, check-in/out and host controls
   styles.ts           Class lists shared by the panels
   ConfigRow.tsx       Shared `key: value` row for the config panel
   Stepper.tsx         Number input with − / + buttons
@@ -72,14 +85,21 @@ components/pomodoro/
   MatrixRain.tsx      Background canvas animation
 hooks/
   usePomodoro.ts      Timer engine, cycle logic, heads-up cues, settings, stats, log, intent, parking lot, shortcuts
-  usePresence.ts      focus_room: joins the presence channel and counts peers in focus
+  usePresence.ts      Joins a presence channel and lists the peers in it
+  useRoom.ts          Room link, joining, host sessions and check-ins
 lib/
   cn.ts               Class-name join helper
   pomodoro.ts         Types, defaults, limits and formatters
   storage.ts          localStorage helpers
   audio.ts            Web Audio chiptune synth
   haptics.ts          Vibration cues
-  presence.ts         Supabase Realtime connection and peer counting for focus_room
+  presence.ts         Shared Supabase Realtime socket and channels
+  rooms.ts            Room types and payload validation, shared by client and server
+  roomServer.ts       Server-side room helpers: ids, host tokens, responses
+  db.ts               Prisma client
+prisma/
+  schema.prisma       The rooms table
+  migrations/         SQL migrations (row-level security is on, with no policies)
 ```
 
 ## Theming
@@ -90,9 +110,11 @@ The accent color comes from `--accent`, which switches with `[data-mode]` on `<h
 
 The timer counts down against an absolute end timestamp instead of counting ticks, so it stays accurate even when the browser throttles a background tab. After each focus session the cycle counter goes up. When it reaches the long-break interval the next break is a long one, and the counter resets after that long break ends. Skipping a session advances the cycle but doesn't count toward today's stats.
 
-## Focus room privacy
+## Privacy
 
-With `focus_room` off (the default), the app opens no connections for it and doesn't even download the client library.
+With `focus_room` off (the default) and no room joined, the app opens no connections and doesn't even download the Realtime client.
+
+### focus_room
 
 With it on, the app opens one WebSocket to your Supabase project's Realtime server and joins the `focusd:global` presence channel. It sends:
 
@@ -101,3 +123,16 @@ With it on, the app opens one WebSocket to your Supabase project's Realtime serv
 - Your Supabase publishable key, which the connection requires.
 
 No task text, parking-lot notes, stats, settings or account details are sent. Like any server, Supabase sees your IP address. If the connection drops, the count shows `offline` and the timer carries on as normal.
+
+### Rooms
+
+A room is joined only when you click create or join. Opening an invite link alone doesn't connect. In a room, the app opens a WebSocket for that room and shares this with the others in it:
+
+- Your handle, if you set one (up to 24 characters, saved in your browser for next time).
+- Your mode, whether your timer is running, and when it ends (or the time left while paused), so everyone's clock can count down without drift. Like the global channel, this is only sent when something changes.
+- Your intent task, only if `share_task` is on.
+- Check-in and check-out answers, only when you choose to share one.
+
+None of that is stored on the server. The database holds one row per room: its random id, a SHA-256 hash of the host's token, timestamps, and the current "start together" session (mode, start, end, and whether check-ins are on). Rooms nobody opens for 30 days are deleted. The table has row-level security on and no policies, so the publishable key can't read it through Supabase's Data API; only the app's server routes can.
+
+Only people with the link can join a room, and anyone with the link can. Text from others is capped in length and shown as plain text. Only the browser that created the room holds the host token, so only it can start a session for everyone. Other members' browsers just get a signal to fetch the new session from the server.

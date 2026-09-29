@@ -66,6 +66,10 @@ export function usePomodoro() {
   const [cued, setCued] = useState<number | null>(null);
   const [intent, setIntent] = useState<Intent>({ task: "", then: "" });
   const [parked, setParked] = useState<Parked[]>([]);
+  /** When the running timer ends, mirrored from `endAt` for anything that renders or shares it. */
+  const [endsAt, setEndsAt] = useState<number | null>(null);
+  /** Length of a timer started by a room host, which can differ from the local settings. */
+  const [span, setSpan] = useState<number | null>(null);
 
   const endAt = useRef<number | null>(null);
   const runningRef = useRef(false);
@@ -75,7 +79,7 @@ export function usePomodoro() {
   const prevLeft = useRef(0);
 
   const durOf = useCallback((m: Mode) => settings[MODES[m].key] * 60_000, [settings]);
-  const total = durOf(mode);
+  const total = span ?? durOf(mode);
   const progress = Math.min(1, Math.max(0, 1 - remaining / total));
   const next = nextMode(mode, cycle, settings.every);
 
@@ -83,6 +87,10 @@ export function usePomodoro() {
     (msg: string, kind: LogKind = "sys"): LogLine => ({ id: ++logId.current, t: stamp(), msg, kind }),
     [],
   );
+  const setEnd = useCallback((at: number | null) => {
+    endAt.current = at;
+    setEndsAt(at);
+  }, []);
   const push = useCallback(
     (msg: string, kind?: LogKind) => setLog((l) => [...l.slice(-MAX_LOG), line(msg, kind)]),
     [line],
@@ -182,19 +190,20 @@ export function usePomodoro() {
     (next: Mode, autoRun: boolean) => {
       const d = durOf(next);
       setMode(next);
+      setSpan(null);
       setRemaining(d);
       setCued(null);
       setGlitch((g) => g + 1);
       if (autoRun) {
-        endAt.current = Date.now() + d;
+        setEnd(Date.now() + d);
         prevLeft.current = d;
         setRunning(true);
       } else {
-        endAt.current = null;
+        setEnd(null);
         setRunning(false);
       }
     },
-    [durOf],
+    [durOf, setEnd],
   );
 
   /** Move to the next timer in the cycle. `skipped` means the user cut the current one short. */
@@ -206,7 +215,7 @@ export function usePomodoro() {
       if (mode === "focus") {
         nextCycle = cycle + 1;
         if (!skipped) {
-          const add = durOf("focus");
+          const add = total;
           setStats((s) => {
             const base = s.date === today() ? s : freshStats();
             return { ...base, sessions: base.sessions + 1, focusMs: base.focusMs + add };
@@ -226,7 +235,7 @@ export function usePomodoro() {
         else if (settings.sound) playDone();
         if (settings.vibrate) buzzDone();
         if (settings.flash) setFlash((f) => f + 1);
-        if (mode === "focus") push(`session ${nextCycle}/${settings.every} complete. +${settings.focus}m focus logged`, "ok");
+        if (mode === "focus") push(`session ${nextCycle}/${settings.every} complete. +${Math.round(total / 60_000)}m focus logged`, "ok");
         else push(`${MODES[mode].label} finished. back to work.`, kindFor(mode));
         if (to === "long") push(`cycle complete :: long_break unlocked (${settings.long}m)`, "long");
         else if (to === "short") push(`short_break queued (${settings.short}m)`, "brk");
@@ -238,7 +247,7 @@ export function usePomodoro() {
 
       switchTo(to, autoRun);
     },
-    [cycle, mode, settings, parked.length, durOf, push, switchTo],
+    [cycle, mode, settings, parked.length, total, push, switchTo],
   );
 
   /** Fire a heads-up when the time left crosses one of the HEADS_UP_MIN marks. */
@@ -274,7 +283,7 @@ export function usePomodoro() {
       if (endAt.current == null) return;
       const left = endAt.current - Date.now();
       if (left <= 0) {
-        endAt.current = null;
+        setEnd(null);
         setRemaining(0);
         advanceRef.current(false);
       } else {
@@ -284,13 +293,13 @@ export function usePomodoro() {
       }
     }, TICK_MS);
     return () => window.clearInterval(id);
-  }, [running]);
+  }, [running, setEnd]);
 
   const start = useCallback(() => {
     ensureAudio();
     silence();
     if (settings.sound) playStart();
-    endAt.current = Date.now() + remaining;
+    setEnd(Date.now() + remaining);
     prevLeft.current = remaining;
     setRunning(true);
     setGlitch((g) => g + 1);
@@ -302,16 +311,16 @@ export function usePomodoro() {
       if (task) push(`task :: ${task}`, "ok");
       if (then) push(`if distracted → ${then}`);
     }
-  }, [settings.sound, settings.intention, intent, remaining, total, mode, push, silence]);
+  }, [settings.sound, settings.intention, intent, remaining, total, mode, push, silence, setEnd]);
 
   const pause = useCallback(() => {
     silence();
     const left = endAt.current ? Math.max(0, endAt.current - Date.now()) : remaining;
-    endAt.current = null;
+    setEnd(null);
     setRemaining(left);
     setRunning(false);
     push(`SIGSTOP :: paused at ${fmt(left)}`, "warn");
-  }, [remaining, push, silence]);
+  }, [remaining, push, silence, setEnd]);
 
   /** The main button: stops a ringing alert first, otherwise starts or pauses. */
   const toggle = useCallback(() => {
@@ -322,20 +331,22 @@ export function usePomodoro() {
 
   const reset = useCallback(() => {
     silence();
-    endAt.current = null;
+    setEnd(null);
     setRunning(false);
-    setRemaining(total);
+    const d = durOf(mode);
+    setSpan(null);
+    setRemaining(d);
     setCued(null);
     setGlitch((g) => g + 1);
-    push(`reset ${MODES[mode].label} → ${fmt(total)}`);
-  }, [total, mode, push, silence]);
+    push(`reset ${MODES[mode].label} → ${fmt(d)}`);
+  }, [durOf, mode, push, silence, setEnd]);
 
   const skip = useCallback(() => {
     ensureAudio();
     silence();
-    endAt.current = null;
+    setEnd(null);
     advance(true);
-  }, [advance, silence]);
+  }, [advance, silence, setEnd]);
 
   const pickMode = useCallback(
     (m: Mode) => {
@@ -347,6 +358,26 @@ export function usePomodoro() {
     [mode, settings, push, switchTo, silence],
   );
 
+  /** Join a timer someone else started: run `m` until `end` (local clock), out of a `length` ms session. */
+  const syncStart = useCallback(
+    (m: Mode, end: number, length: number, note: string) => {
+      const left = end - Date.now();
+      if (left <= 0) return;
+      silence();
+      setMode(m);
+      setSpan(length);
+      setRemaining(left);
+      setCued(null);
+      setGlitch((g) => g + 1);
+      setEnd(end);
+      prevLeft.current = left;
+      setRunning(true);
+      if (settings.sound) playCue();
+      push(note, kindFor(m));
+    },
+    [settings.sound, push, silence, setEnd],
+  );
+
   const setNumber = useCallback(
     (key: NumericSetting, val: number) => {
       if (settings[key] === val) return;
@@ -356,6 +387,7 @@ export function usePomodoro() {
         if (running) {
           push(`${msg} (applies next session)`);
         } else {
+          setSpan(null);
           setRemaining(val * 60_000);
           setCued(null);
           push(msg);
@@ -430,6 +462,7 @@ export function usePomodoro() {
     settings,
     mode,
     running,
+    endsAt,
     alarming,
     remaining,
     total,
@@ -443,6 +476,6 @@ export function usePomodoro() {
     log,
     intent,
     parked,
-    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, editIntent, park, unpark, clearParked, log: push },
+    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, editIntent, park, unpark, clearParked, syncStart, log: push },
   };
 }

@@ -27,6 +27,8 @@ export type Settings = {
   intention: boolean;
   /** Show how many others are focusing right now. Connects to the presence server only while on. */
   focusRoom: boolean;
+  /** Show your intent task to the people in your room. */
+  shareTask: boolean;
   /** Matrix rain, glitching digits, blinking and other animation. */
   motion: boolean;
   /** CRT scanlines and vignette over the screen. */
@@ -44,6 +46,7 @@ export type FlagSetting =
   | "headsUp"
   | "intention"
   | "focusRoom"
+  | "shareTask"
   | "motion"
   | "scanlines"
   | "flash";
@@ -75,6 +78,7 @@ export const DEFAULTS: Settings = {
   headsUp: true,
   intention: true,
   focusRoom: false,
+  shareTask: false,
   motion: true,
   scanlines: true,
   flash: true,
@@ -129,6 +133,7 @@ export const FLAG_NAMES: Record<FlagSetting, string> = {
   headsUp: "heads_up",
   intention: "intention",
   focusRoom: "focus_room",
+  shareTask: "share_task",
   motion: "motion",
   scanlines: "scanlines",
   flash: "flash",
