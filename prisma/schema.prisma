@@ -31,3 +31,13 @@ model Room {
 
   @@map("rooms")
 }
+
+/// Fixed-window request counters for the rooms API. Keys are hashes, never raw IP addresses.
+model RateLimit {
+  key         String   @id
+  windowStart DateTime @map("window_start")
+  count       Int
+
+  @@index([windowStart])
+  @@map("rate_limits")
+}

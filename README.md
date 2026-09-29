@@ -13,7 +13,7 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Parking lot**: press `n` mid-session to jot down a stray thought and get back to work. The list stays hidden while you focus and comes back on your break.
 - **Focus room**: turn on `focus_room` to see how many other people are in a focus session right now (`▲ 3 others focusing`, under the dial). It's off by default, and nothing connects to a server until you turn it on. See [Privacy](#privacy).
 - **Rooms**: create a private room and share its link to focus alongside friends (virtual body doubling). The `~/room` panel lists who's there with an optional handle, their mode and their time left. Turn on `share_task` to show your task to the room.
-- **Start together**: whoever created a room is its host and can start a timer for everyone at once, with optional check-in ("what are you working on?") and check-out ("how did it go?") prompts. Joining late drops you into the session already running.
+- **Start together**: whoever created a room is its host and can start a timer for everyone at once, with optional check-in ("what are you working on?") and check-out ("how did it go?") prompts. Joining late drops you into the session already running. The host can also close the room for good.
 - **Sensory controls**: turn off `motion` (matrix rain, glitch, blinking), `scanlines` or the end-of-timer `flash`. The OS reduced-motion setting is respected as well.
 - **Daily stats**: sessions completed and focus time for today.
 - **Auto-start**: optionally roll straight into the next timer.
@@ -42,8 +42,11 @@ The timer works with no setup. `focus_room` and rooms need a [Supabase](https://
 
 1. Copy `.env.example` to `.env.local` and fill it in from the Supabase dashboard:
    - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or the legacy anon key) for Realtime. The app joins public channels, so leave Realtime's public channel access allowed.
-   - `DATABASE_URL` (transaction pooler, port 6543) for the app, and `DIRECT_URL` (session pooler, port 5432, or the direct connection) for migrations. Rooms only.
-2. Run `npm run db:deploy` to create the `rooms` table.
+   - `DIRECT_URL` (session pooler, port 5432, or the direct connection) for migrations, as `postgres`.
+   - `DATABASE_URL` (transaction pooler, port 6543) for the app, as the `focusd_app` role. See [Database role](#database-role).
+   - `RATE_LIMIT_SECRET`: any long random string (`openssl rand -hex 32`).
+2. Run `npm run db:deploy` to create the tables and the `focusd_app` role.
+3. Give `focusd_app` a password so the app can log in as it (see below).
 
 With only the Realtime variables, `focus_room` works and creating a room fails with a message in the log. With none of them, the room panel is hidden and `focus_room` shows `offline`.
 
@@ -54,6 +57,7 @@ With only the Realtime variables, `focus_room` works and creating a room fails w
 | `npm start`         | Serve the production build       |
 | `npm run typecheck` | Type-check with `tsc --noEmit`   |
 | `npm run db:deploy` | Apply Prisma migrations          |
+| `node scripts/smoke-api.mjs [url]` | Smoke-test a running server's API and security headers |
 
 ## Stack
 
@@ -70,7 +74,7 @@ With only the Realtime variables, `focus_room` works and creating a room fails w
 app/
   layout.tsx          Root layout, fonts, metadata
   page.tsx            Renders the timer
-  api/rooms/          Create a room, look one up, and (host only) start a session for everyone
+  api/rooms/          Create, look up and (host only) close a room, and start a session for everyone
   globals.css         Tailwind @theme tokens, keyframes and the CRT/glitch effects
 components/pomodoro/
   Pomodoro.tsx        Main UI
@@ -93,14 +97,29 @@ lib/
   storage.ts          localStorage helpers
   audio.ts            Web Audio chiptune synth
   haptics.ts          Vibration cues
-  presence.ts         Shared Supabase Realtime socket and channels
+  presence.ts         Supabase Realtime connections and presence parsing
   rooms.ts            Room types and payload validation, shared by client and server
-  roomServer.ts       Server-side room helpers: ids, host tokens, responses
+  roomServer.ts       Server-side room helpers: ids, host tokens, body limits, responses
+  rateLimit.ts        Per-client rate limits for the rooms API, stored in Postgres
   db.ts               Prisma client
 prisma/
-  schema.prisma       The rooms table
-  migrations/         SQL migrations (row-level security is on, with no policies)
+  schema.prisma       The rooms and rate_limits tables
+  migrations/         SQL migrations: tables, row-level security, the focusd_app role
+scripts/
+  smoke-api.mjs       API and security-header smoke test, also run in CI
+proxy.ts              Per-request Content-Security-Policy nonce
+next.config.ts        Other security headers
 ```
+
+## Database role
+
+Migrations run as `postgres`, but the app itself connects as `focusd_app`. That role can read and write `rooms` and `rate_limits` and nothing else, and row-level security only lets `focusd_app` through. The migration creates it without a login. After `npm run db:deploy`, give it one in the Supabase SQL editor:
+
+```sql
+ALTER ROLE focusd_app WITH LOGIN PASSWORD 'a long random password';
+```
+
+Then use it in `DATABASE_URL` (on the Supabase pooler the user is `focusd_app.<project-ref>`).
 
 ## Theming
 
@@ -133,6 +152,41 @@ A room is joined only when you click create or join. Opening an invite link alon
 - Your intent task, only if `share_task` is on.
 - Check-in and check-out answers, only when you choose to share one.
 
-None of that is stored on the server. The database holds one row per room: its random id, a SHA-256 hash of the host's token, timestamps, and the current "start together" session (mode, start, end, and whether check-ins are on). Rooms nobody opens for 30 days are deleted. The table has row-level security on and no policies, so the publishable key can't read it through Supabase's Data API; only the app's server routes can.
+None of that is stored on the server. The database holds one row per room: its random id, a SHA-256 hash of the host's token, timestamps, and the current "start together" session (mode, start, end, and whether check-ins are on). Rooms nobody opens for 30 days are deleted, and so is the whole room when the host closes it.
 
-Only people with the link can join a room, and anyone with the link can. Text from others is capped in length and shown as plain text. Only the browser that created the room holds the host token, so only it can start a session for everyone. Other members' browsers just get a signal to fetch the new session from the server.
+For rate limiting, the server also keeps request counters keyed by an HMAC of your IP address (never the address itself), deleted after a day.
+
+## Security
+
+- **Rooms API.**
+  - Every endpoint is rate limited per client: 10 new rooms an hour, 120 lookups a minute, and 20 host actions a minute. Over the limit you get a `429` with `Retry-After`.
+  - There's a cap of 10,000 rooms in total.
+  - Request bodies over 2 KB are refused.
+  - Database errors come back as a plain `503`, with credentials redacted from the server log.
+- **Host actions.**
+  - Starting a session and closing a room need the host token. It lives only in the creating browser, is compared by hash in constant time, and never appears in a URL.
+  - Broadcasts between members only prompt a re-fetch from the server, so a spoofed "sync" or "closed" does nothing.
+- **Database.**
+  - The app connects as `focusd_app`, not `postgres`.
+  - Row-level security is on for both tables, and Supabase's API roles (`anon`, `authenticated`) have had their grants revoked. So the publishable key can't reach either table.
+- **Shared text.**
+  - Handles, tasks and check-ins are stripped of control and invisible formatting characters, such as bidi overrides and zero-width spaces, so names can't be disguised.
+  - They're capped in length and rendered as plain text.
+  - The room panel lists at most 50 peers.
+- **Browser.**
+  - A strict Content-Security-Policy with a fresh nonce on every request (`proxy.ts`) means only the app's own scripts run, and the browser only connects to this site and the Supabase project.
+  - Also set: `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin` (room links stay private), `X-Content-Type-Options: nosniff` and a restrictive `Permissions-Policy`.
+- **Dependencies and CI.**
+  - Every PR runs the dependency audit, typecheck and build.
+  - It also runs the migrations against Postgres and an API smoke test as `focusd_app`.
+  - Dependabot keeps dependencies and actions current.
+  - `package.json` overrides patch two advisories in Prisma CLI dependencies (`deepmerge-ts`, `mysql2`).
+
+**Known limit: public Realtime channels.** Realtime uses public channels, and the publishable key ships in the page. So anyone can:
+- Join the global channel and skew the "others focusing" count.
+- Use the project's Realtime connection quota.
+- Keep listening in a room if they still have its link after leaving.
+
+Closing the room ends it for everyone else. Moving to private channels with Supabase anonymous sign-ins and Realtime Authorization would close this gap, at the cost of an auth dependency.
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).

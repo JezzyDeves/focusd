@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MODES, TEXT_MAX, type LogKind, type Mode, type Settings } from "@/lib/pomodoro";
 import { presenceConfigured, roomTopic } from "@/lib/presence";
-import { HANDLE_MAX, ROOM_ID, parseRoomMeta, type CreatedRoom, type RoomInfo, type RoomMeta, type SyncSession } from "@/lib/rooms";
+import { HANDLE_MAX, ROOM_ID, cleanText, parseRoomMeta, type CreatedRoom, type RoomInfo, type RoomMeta, type SyncSession } from "@/lib/rooms";
 import { loadHandle, loadHostToken, saveHandle, saveHostToken } from "@/lib/storage";
 import { usePresence } from "./usePresence";
 
@@ -147,24 +147,31 @@ export function useRoom({ settings, mode, running, endsAt, remaining, task, sync
     }
   }, [busy, log]);
 
+  // "sync" and "closed" pokes only prompt a fetch: what happens next is decided by the server's answer.
   const onBroadcast = useCallback(
     (event: string) => {
-      if (event !== "sync" || !id || poke.current) return;
+      if ((event !== "sync" && event !== "closed") || !id || poke.current) return;
       poke.current = window.setTimeout(() => {
         poke.current = null;
-        fetchRoom(id, "room :: host started a session · synced").catch(() => {});
+        fetchRoom(id, "room :: host started a session · synced")
+          .then((found) => {
+            if (found) return;
+            log("room :: the host closed this room", "warn");
+            leave(true);
+          })
+          .catch(() => {});
       }, POKE_DELAY_MS);
     },
-    [id, fetchRoom],
+    [id, fetchRoom, leave, log],
   );
 
   const meta: RoomMeta = {
-    handle: handle.trim(),
+    handle,
     mode,
     running,
     endAt: running ? endsAt : null,
     left: running ? 0 : remaining,
-    task: settings.shareTask ? task.trim() || undefined : undefined,
+    task: settings.shareTask ? cleanText(task, TEXT_MAX) || undefined : undefined,
     checkin: checkin || undefined,
     checkout: checkout || undefined,
   };
@@ -200,6 +207,27 @@ export function useRoom({ settings, mode, running, endsAt, remaining, task, sync
     }
   }, [id, hostToken, busy, mode, settings, checkins, apply, send, log]);
 
+  const close = useCallback(async () => {
+    if (!id || !hostToken || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/rooms/${id}`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ hostToken }),
+      });
+      if (res.status === 403) return log("room :: only the host can close the room", "warn");
+      if (!res.ok && res.status !== 404) throw new Error(`rooms api ${res.status}`);
+      send("closed");
+      log(`room :: closed ${id}`);
+      leave(true);
+    } catch {
+      log("room :: couldn't close the room. try again in a moment.", "warn");
+    } finally {
+      setBusy(false);
+    }
+  }, [id, hostToken, busy, send, leave, log]);
+
   // Ask how it went once a session with check-ins ends.
   useEffect(() => {
     if (!synced?.checkins) return;
@@ -212,7 +240,7 @@ export function useRoom({ settings, mode, running, endsAt, remaining, task, sync
   }, []);
 
   const setHandle = useCallback((raw: string) => {
-    const h = raw.trim().slice(0, HANDLE_MAX);
+    const h = cleanText(raw, HANDLE_MAX);
     setHandleState(h);
     saveHandle(h);
   }, []);
@@ -220,7 +248,7 @@ export function useRoom({ settings, mode, running, endsAt, remaining, task, sync
   /** Answer the open check-in or check-out prompt. An empty answer just closes it. */
   const answer = useCallback(
     (raw: string) => {
-      const text = raw.trim().slice(0, TEXT_MAX);
+      const text = cleanText(raw, TEXT_MAX);
       if (prompt === "checkin") setCheckin(text);
       else if (prompt === "checkout") setCheckout(text);
       if (text) log(`room :: ${prompt === "checkin" ? "checked in" : "checked out"}`, "ok");
@@ -249,7 +277,7 @@ export function useRoom({ settings, mode, running, endsAt, remaining, task, sync
     synced,
     prompt,
     checkins,
-    actions: { create, join, leave, startTogether, setHandle, setCheckins, answer, copyLink },
+    actions: { create, join, leave, close, startTogether, setHandle, setCheckins, answer, copyLink },
   };
 }
 

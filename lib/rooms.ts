@@ -5,6 +5,16 @@ export const ROOM_ID = /^[a-z0-9]{12}$/;
 
 export const HANDLE_MAX = 24;
 
+/** The room panel lists at most this many peers, so a flood of fake presences can't swamp the page. */
+export const MAX_PEERS_SHOWN = 50;
+
+/**
+ * Tidy free text before it's shared or shown: drop control and invisible formatting characters (bidi overrides,
+ * zero-width spaces and joiners) that could disguise a name, collapse whitespace and cap the length.
+ */
+export const cleanText = (s: string, max: number) =>
+  s.replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max);
+
 /** A "start together" session, as absolute epoch-ms timestamps on the server's clock. */
 export type SyncSession = { mode: Mode; startAt: number; endAt: number; checkins: boolean };
 
@@ -40,7 +50,7 @@ export const clampMinutes = (mode: Mode, minutes: number) => {
   return Math.min(max, Math.max(min, Math.round(minutes)));
 };
 
-const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
+const text = (v: unknown, max: number) => (typeof v === "string" ? cleanText(v, max) || undefined : undefined);
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 /** Presence payloads come from other clients: keep only well-formed fields, capped in length. */
