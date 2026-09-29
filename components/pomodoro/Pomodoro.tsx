@@ -211,7 +211,18 @@ export function Pomodoro() {
                 <Toggle name="sound" hint="play a tone when time's up" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
                 <Toggle name="soft_tone" hint="gentle chime, not chiptune" on={settings.softTone} onToggle={() => actions.setFlag("softTone", !settings.softTone)} />
                 <Stepper id="cfg-volume" name="volume" hint="alert loudness" value={settings.volume} limits={LIMITS.volume} unit="/10" onChange={(v) => actions.setNumber("volume", v)} />
-                <Toggle name="repeat_alert" hint="loop the alert until stopped" on={settings.repeatAlert} onToggle={() => actions.setFlag("repeatAlert", !settings.repeatAlert)} />
+                <Toggle name="repeat_alert" hint="loop the alert" on={settings.repeatAlert} onToggle={() => actions.setFlag("repeatAlert", !settings.repeatAlert)} />
+                {settings.repeatAlert && (
+                  <Stepper
+                    id="cfg-repeat"
+                    name="repeat_count"
+                    hint="plays per alert · 0 = until stopped"
+                    value={settings.repeatCount}
+                    limits={LIMITS.repeatCount}
+                    unit={settings.repeatCount === 0 ? "∞" : "x"}
+                    onChange={(v) => actions.setNumber("repeatCount", v)}
+                  />
+                )}
                 <Toggle name="vibrate" hint="buzz on alerts (phones)" on={settings.vibrate} onToggle={() => actions.setFlag("vibrate", !settings.vibrate)} />
                 <Toggle name="notify" hint="desktop pop-up when time's up" on={settings.notify} onToggle={() => actions.setFlag("notify", !settings.notify)} />
 
