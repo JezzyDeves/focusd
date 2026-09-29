@@ -146,3 +146,12 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* The in-app `motion` switch, for anyone who hasn't set the OS preference. */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}

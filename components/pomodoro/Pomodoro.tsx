@@ -5,8 +5,11 @@ import { usePomodoro } from "@/hooks/usePomodoro";
 import { cn } from "@/lib/cn";
 import { LIMITS, MODES, fmt, fmtDur, stamp, type LogKind, type Mode } from "@/lib/pomodoro";
 import { Dial } from "./Dial";
+import { IntentPanel } from "./IntentPanel";
 import { MatrixRain } from "./MatrixRain";
+import { ParkingLot } from "./ParkingLot";
 import { Stepper } from "./Stepper";
+import { fileName, panel, panelHead } from "./styles";
 import { Toggle } from "./Toggle";
 
 const BOOT_LINES = 5;
@@ -19,12 +22,13 @@ const LOG_COLOR: Record<LogKind, string> = {
   warn: "text-danger",
 };
 
-const panel = "rounded-xs border border-line bg-panel/90 backdrop-blur-[2px]";
-const panelHead =
-  "flex w-full items-center justify-between gap-3 border-b bg-panel-2 px-3 py-2.5 text-left text-xs leading-tight font-medium tracking-[0.04em] text-dim";
-const fileName = "text-ink before:text-accent before:content-['■_']";
 const btn =
   "focus-ring min-h-[52px] cursor-pointer rounded-xs border px-2.5 leading-none font-medium tracking-[0.06em] uppercase transition active:translate-y-px";
+
+/** A `# section` comment between groups of config rows. */
+function ConfigComment({ children }: { children: string }) {
+  return <div className="pt-3 pb-0.5 text-[11px] tracking-[0.04em] text-dim"># {children}</div>;
+}
 
 function Clock() {
   const [now, setNow] = useState<string | null>(null);
@@ -37,7 +41,8 @@ function Clock() {
 }
 
 export function Pomodoro() {
-  const { settings, mode, running, alarming, remaining, total, progress, cycle, stats, glitch, flash, log, actions } = usePomodoro();
+  const { settings, mode, running, alarming, remaining, total, progress, cycle, next, cued, stats, glitch, flash, log, intent, parked, actions } =
+    usePomodoro();
   const [configOpen, setConfigOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +55,8 @@ export function Pomodoro() {
   const shown = Math.min(cycle, every);
   const digits = fmt(remaining);
   const paused = !running && remaining < total;
-  const status = alarming ? "TIME_UP" : running ? "RUNNING" : paused ? "PAUSED" : "READY";
+  const wrapping = running && cued != null;
+  const status = alarming ? "TIME_UP" : wrapping ? "WRAP_UP" : running ? "RUNNING" : paused ? "PAUSED" : "READY";
 
   let caption: React.ReactNode;
   if (mode === "focus") {
@@ -76,8 +82,8 @@ export function Pomodoro() {
 
   return (
     <>
-      <MatrixRain running={running} />
-      <div className="crt pointer-events-none fixed inset-0 z-50" aria-hidden="true" />
+      {settings.motion && <MatrixRain running={running} />}
+      {settings.scanlines && <div className="crt pointer-events-none fixed inset-0 z-50" aria-hidden="true" />}
       {flash > 0 && <div key={`flash-${flash}`} className="pointer-events-none fixed inset-0 z-40 animate-flash bg-accent opacity-0" aria-hidden="true" />}
 
       <div className="relative z-10 mx-auto grid max-w-[520px] gap-[18px] px-4 pt-3.5 pb-10 desk:max-w-[1040px] desk:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] desk:gap-x-10 desk:pt-7 desk:pb-12">
@@ -123,7 +129,7 @@ export function Pomodoro() {
             </span>
             <span className={cn("text-[max(11px,3.2cqi)] tracking-[0.06em]", running ? "text-ink" : "text-dim")}>
               <span className={cn("mr-[0.45em] inline-block size-[0.55em] align-[0.05em]", running ? "animate-blink bg-accent" : "bg-dim")} />
-              {status} · {Math.round(progress * 100)}%
+              {status} · {wrapping ? `next: ${MODES[next].label}` : `${Math.round(progress * 100)}%`}
             </span>
           </Dial>
 
@@ -145,6 +151,8 @@ export function Pomodoro() {
             </div>
             <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
           </div>
+
+          {mode === "focus" && settings.intention && <IntentPanel intent={intent} onEdit={actions.editIntent} />}
 
           <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
             <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
@@ -169,11 +177,13 @@ export function Pomodoro() {
           <div className="text-center text-[11px] tracking-[0.03em] text-dim [@media(hover:none)]:hidden [&_kbd]:rounded-xs [&_kbd]:border [&_kbd]:border-line-2 [&_kbd]:px-[5px] [&_kbd]:py-px [&_kbd]:font-[inherit] [&_kbd]:text-ink">
             <kbd>space</kbd> start/pause · <kbd>esc</kbd> stop alarm · <kbd>r</kbd> reset · <kbd>s</kbd> skip · <kbd>1</kbd>
             <kbd>2</kbd>
-            <kbd>3</kbd> mode
+            <kbd>3</kbd> mode · <kbd>n</kbd> park a thought
           </div>
         </main>
 
         <aside className="grid min-w-0 content-start gap-[18px]">
+          <ParkingLot parked={parked} hideList={running && mode === "focus"} onPark={actions.park} onRemove={actions.unpark} onClear={actions.clearParked} />
+
           <section className={panel}>
             <button
               type="button"
@@ -188,14 +198,29 @@ export function Pomodoro() {
               </span>
             </button>
             {configOpen && (
-              <div id="config-body" className="grid gap-0.5 px-3 pt-1.5 pb-3">
+              <div id="config-body" className="grid gap-0.5 px-3 pt-0 pb-3">
+                <ConfigComment>timer</ConfigComment>
                 <Stepper id="cfg-focus" name="focus_len" hint="length of each pomodoro" value={settings.focus} limits={LIMITS.focus} unit="min" onChange={(v) => actions.setNumber("focus", v)} />
                 <Stepper id="cfg-short" name="short_break" hint="rest between sessions" value={settings.short} limits={LIMITS.short} unit="min" onChange={(v) => actions.setNumber("short", v)} />
                 <Stepper id="cfg-long" name="long_break" hint="rest after a full cycle" value={settings.long} limits={LIMITS.long} unit="min" onChange={(v) => actions.setNumber("long", v)} />
                 <Stepper id="cfg-every" name="long_every" hint="sessions per cycle" value={settings.every} limits={LIMITS.every} unit="sess" onChange={(v) => actions.setNumber("every", v)} />
                 <Toggle name="auto_start" hint="roll into the next timer" on={settings.autoStart} onToggle={() => actions.setFlag("autoStart", !settings.autoStart)} />
-                <Toggle name="sound" hint="chiptune alert when time's up" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
+
+                <ConfigComment>alerts</ConfigComment>
+                <Toggle name="heads_up" hint="soft cue at 5m and 1m left" on={settings.headsUp} onToggle={() => actions.setFlag("headsUp", !settings.headsUp)} />
+                <Toggle name="sound" hint="play a tone when time's up" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
+                <Toggle name="soft_tone" hint="gentle chime, not chiptune" on={settings.softTone} onToggle={() => actions.setFlag("softTone", !settings.softTone)} />
+                <Stepper id="cfg-volume" name="volume" hint="alert loudness" value={settings.volume} limits={LIMITS.volume} unit="/10" onChange={(v) => actions.setNumber("volume", v)} />
                 <Toggle name="repeat_alert" hint="loop the alert until stopped" on={settings.repeatAlert} onToggle={() => actions.setFlag("repeatAlert", !settings.repeatAlert)} />
+                <Toggle name="vibrate" hint="buzz on alerts (phones)" on={settings.vibrate} onToggle={() => actions.setFlag("vibrate", !settings.vibrate)} />
+
+                <ConfigComment>focus aids</ConfigComment>
+                <Toggle name="intention" hint="name the task before focusing" on={settings.intention} onToggle={() => actions.setFlag("intention", !settings.intention)} />
+
+                <ConfigComment>sensory</ConfigComment>
+                <Toggle name="motion" hint="rain, glitch and blinking" on={settings.motion} onToggle={() => actions.setFlag("motion", !settings.motion)} />
+                <Toggle name="scanlines" hint="CRT lines and vignette" on={settings.scanlines} onToggle={() => actions.setFlag("scanlines", !settings.scanlines)} />
+                <Toggle name="flash" hint="flash the screen at time up" on={settings.flash} onToggle={() => actions.setFlag("flash", !settings.flash)} />
               </div>
             )}
           </section>

@@ -7,11 +7,24 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Configurable cycle**: set the focus length, the short and long break lengths, and how many sessions run before a long break. Settings are saved in `localStorage`.
 - **Mode-aware theme**: the accent turns green for focus, cyan for short breaks and amber for long breaks.
 - **CRT atmosphere**: a matrix-rain canvas, scanlines, a 60-tick dial that lights up as time passes, glitching digits on each start and a typewriter-style event log.
-- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Turn on `repeat_alert` to keep it looping until you stop it with the main button or `esc`.
+- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Turn on `repeat_alert` to keep it looping until you stop it with the main button or `esc`. `volume` sets how loud it is, `soft_tone` swaps it for a gentle sine chime, and `vibrate` adds a buzz on phones that support it.
+- **Heads-up before the end**: `heads_up` plays a soft cue at 5 and 1 minutes left (skipping any that don't fit the timer), and the dial switches to `WRAP_UP` and shows what's next, so a session winds down instead of stopping abruptly.
+- **Session intention**: before a focus session, name the task and an if-then plan for distractions. Both are logged when the session starts. Turn this off with `intention`.
+- **Parking lot**: press `n` mid-session to jot down a stray thought and get back to work. The list stays hidden while you focus and comes back on your break.
+- **Sensory controls**: turn off `motion` (matrix rain, glitch, blinking), `scanlines` or the end-of-timer `flash`. The OS reduced-motion setting is respected as well.
 - **Daily stats**: sessions completed and focus time for today.
 - **Auto-start**: optionally roll straight into the next timer.
 - **Stays awake**: requests a screen wake lock while a timer runs, where supported.
-- **Keyboard shortcuts**: `space` start/pause (or stop a ringing alert), `esc` stop the alert, `r` reset, `s` skip, `1` `2` `3` switch mode.
+- **Keyboard shortcuts**: `space` start/pause (or stop a ringing alert), `esc` stop the alert, `r` reset, `s` skip, `1` `2` `3` switch mode, `n` park a thought.
+
+## Why these features
+
+Several features are aimed at ADHD, autistic and other neurodivergent users, and each is based on research:
+
+- **Heads-up cues**: meta-analyses find time-perception differences in ADHD across every timing task studied, and warnings before a transition are a standard autism support.
+- **Intention prompt**: if-then plans ("implementation intentions") helped children with ADHD inhibit unwanted responses (Gawrilow & Gollwitzer, 2008).
+- **Parking lot**: writing a distracting thought down takes it off working memory without breaking the session.
+- **Sensory controls**: sensory-processing differences are very common in autism and show up in ADHD too. Many people never set the OS reduced-motion preference, so the app has its own switches.
 
 ## Getting started
 
@@ -46,22 +59,26 @@ app/
 components/pomodoro/
   Pomodoro.tsx        Main UI
   Dial.tsx            SVG clock face and progress arc
+  IntentPanel.tsx     Task and if-then plan for the focus session
+  ParkingLot.tsx      Stray-thought list
+  styles.ts           Class lists shared by the panels
   ConfigRow.tsx       Shared `key: value` row for the config panel
   Stepper.tsx         Number input with − / + buttons
   Toggle.tsx          [x] / [ ] boolean switch
   MatrixRain.tsx      Background canvas animation
 hooks/
-  usePomodoro.ts      Timer engine, cycle logic, settings, stats, log, shortcuts
+  usePomodoro.ts      Timer engine, cycle logic, heads-up cues, settings, stats, log, intent, parking lot, shortcuts
 lib/
   cn.ts               Class-name join helper
   pomodoro.ts         Types, defaults, limits and formatters
   storage.ts          localStorage helpers
   audio.ts            Web Audio chiptune synth
+  haptics.ts          Vibration cues
 ```
 
 ## Theming
 
-The accent color comes from `--accent`, which switches with `[data-mode]` on `<html>`. It's exposed to Tailwind through `@theme inline`, so `text-accent`, `bg-accent`, `stroke-accent/40` and the glow shadows all follow the current mode. A custom `desk:` breakpoint (60rem) switches to the two-column desktop layout.
+The accent color comes from `--accent`, which switches with `[data-mode]` on `<html>`. `[data-motion="off"]` on `<html>` stills animation the same way `prefers-reduced-motion` does. It's exposed to Tailwind through `@theme inline`, so `text-accent`, `bg-accent`, `stroke-accent/40` and the glow shadows all follow the current mode. A custom `desk:` breakpoint (60rem) switches to the two-column desktop layout.
 
 ## How the timer works
 

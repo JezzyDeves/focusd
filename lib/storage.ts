@@ -1,7 +1,9 @@
-import { DEFAULTS, today, type Settings, type Stats } from "./pomodoro";
+import { DEFAULTS, today, type Intent, type Parked, type Settings, type Stats } from "./pomodoro";
 
 const SETTINGS_KEY = "focusd.settings";
 const STATS_KEY = "focusd.stats";
+const INTENT_KEY = "focusd.intent";
+const PARKED_KEY = "focusd.parked";
 
 function read<T>(key: string): T | null {
   try {
@@ -29,3 +31,12 @@ export const loadStats = (): Stats => {
   return s && s.date === today() ? s : freshStats();
 };
 export const saveStats = (s: Stats) => write(STATS_KEY, s);
+
+export const loadIntent = (): Intent => ({ task: "", then: "", ...(read<Partial<Intent>>(INTENT_KEY) ?? {}) });
+export const saveIntent = (i: Intent) => write(INTENT_KEY, i);
+
+export const loadParked = (): Parked[] => {
+  const p = read<Parked[]>(PARKED_KEY);
+  return Array.isArray(p) ? p : [];
+};
+export const saveParked = (p: Parked[]) => write(PARKED_KEY, p);
