@@ -21,6 +21,8 @@ export type Settings = {
   softTone: boolean;
   /** Vibrate on alerts, where the device supports it. */
   vibrate: boolean;
+  /** Pop up a desktop notification when time's up. Needs browser permission. */
+  notify: boolean;
   /** Give a soft heads-up at each of HEADS_UP_MIN before a timer ends. */
   headsUp: boolean;
   /** Ask what each focus session is for, plus an if-then plan for distractions. */
@@ -39,6 +41,7 @@ export type FlagSetting =
   | "repeatAlert"
   | "softTone"
   | "vibrate"
+  | "notify"
   | "headsUp"
   | "intention"
   | "motion"
@@ -69,6 +72,7 @@ export const DEFAULTS: Settings = {
   volume: 6,
   softTone: false,
   vibrate: false,
+  notify: false,
   headsUp: true,
   intention: true,
   motion: true,
@@ -122,6 +126,7 @@ export const FLAG_NAMES: Record<FlagSetting, string> = {
   repeatAlert: "repeat_alert",
   softTone: "soft_tone",
   vibrate: "vibrate",
+  notify: "notify",
   headsUp: "heads_up",
   intention: "intention",
   motion: "motion",

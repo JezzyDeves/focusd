@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ensureAudio, playCue, playDone, playStart, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
 import { buzzCue, buzzDone } from "@/lib/haptics";
+import { notify, requestNotify } from "@/lib/notify";
 import {
   DEFAULTS,
   FLAG_NAMES,
@@ -226,6 +227,11 @@ export function usePomodoro() {
         else if (settings.sound) playDone();
         if (settings.vibrate) buzzDone();
         if (settings.flash) setFlash((f) => f + 1);
+        if (settings.notify) {
+          const title = mode === "focus" ? "Focus session complete" : "Break's over";
+          const body = autoRun ? `${MODES[to].label} is running.` : `Up next: ${MODES[to].label} (${settings[MODES[to].key]}m).`;
+          notify(title, body);
+        }
         if (mode === "focus") push(`session ${nextCycle}/${settings.every} complete. +${settings.focus}m focus logged`, "ok");
         else push(`${MODES[mode].label} finished. back to work.`, kindFor(mode));
         if (to === "long") push(`cycle complete :: long_break unlocked (${settings.long}m)`, "long");
@@ -369,6 +375,18 @@ export function usePomodoro() {
 
   const setFlag = useCallback(
     (key: FlagSetting, val: boolean) => {
+      if (key === "notify" && val) {
+        // Turning notifications on asks the browser for permission; stay off if it's refused.
+        void requestNotify().then((ok) => {
+          if (ok) {
+            setSettings((s) => ({ ...s, notify: true }));
+            push(`config :: ${FLAG_NAMES[key]} = true`);
+          } else {
+            push("notify :: permission denied. allow notifications for this site in your browser.", "warn");
+          }
+        });
+        return;
+      }
       setSettings((s) => ({ ...s, [key]: val }));
       push(`config :: ${FLAG_NAMES[key]} = ${val}`);
       if (!val && (key === "sound" || key === "repeatAlert")) silence();
