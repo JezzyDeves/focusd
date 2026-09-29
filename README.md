@@ -8,6 +8,7 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Mode-aware theme**: the accent turns green for focus, cyan for short breaks and amber for long breaks.
 - **CRT atmosphere**: a matrix-rain canvas, scanlines, a 60-tick dial that lights up as time passes, glitching digits on each start and a typewriter-style event log.
 - **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Turn on `repeat_alert` to keep it looping until you stop it with the main button or `esc`. `volume` sets how loud it is, `soft_tone` swaps it for a gentle sine chime, and `vibrate` adds a buzz on phones that support it.
+- **Desktop notifications**: turn on `notify` to get a desktop pop-up when a timer ends, so you hear about it even with focusd in a background tab. The browser asks for permission the first time; clicking the notification brings focusd back to the front.
 - **Heads-up before the end**: `heads_up` plays a soft cue at 5 and 1 minutes left (skipping any that don't fit the timer), and the dial switches to `WRAP_UP` and shows what's next, so a session winds down instead of stopping abruptly.
 - **Session intention**: before a focus session, name the task and an if-then plan for distractions. Both are logged when the session starts. Turn this off with `intention`.
 - **Parking lot**: press `n` mid-session to jot down a stray thought and get back to work. The list stays hidden while you focus and comes back on your break.
@@ -97,6 +98,7 @@ lib/
   storage.ts          localStorage helpers
   audio.ts            Web Audio chiptune synth
   haptics.ts          Vibration cues
+  notify.ts           Desktop notifications
   presence.ts         Supabase Realtime connections and presence parsing
   rooms.ts            Room types and payload validation, shared by client and server
   roomServer.ts       Server-side room helpers: ids, host tokens, body limits, responses
