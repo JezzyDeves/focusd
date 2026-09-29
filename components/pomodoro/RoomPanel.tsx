@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Room } from "@/hooks/useRoom";
 import { cn } from "@/lib/cn";
-import { HANDLE_MAX, type RoomMeta } from "@/lib/rooms";
+import { HANDLE_MAX, MAX_PEERS_SHOWN, type RoomMeta } from "@/lib/rooms";
 import { MODES, TEXT_MAX, fmt, type Mode, type Settings } from "@/lib/pomodoro";
 import { fileName, panel, panelHead, promptInput } from "./styles";
 
@@ -79,6 +79,8 @@ function HandleInput({ handle, onSave }: { handle: string; onSave: (h: string) =
 export function RoomPanel({ room, settings, mode, task }: RoomPanelProps) {
   const { id, joined, busy, isHost, handle, status, peers, self, prompt, checkins, actions } = room;
   const [now, setNow] = useState(() => Date.now());
+  /** Closing a room is permanent, so it takes a second click. */
+  const [confirmClose, setConfirmClose] = useState(false);
 
   // Peers' timers tick here even while ours is stopped.
   useEffect(() => {
@@ -137,9 +139,10 @@ export function RoomPanel({ room, settings, mode, task }: RoomPanelProps) {
 
           <ul className="max-h-[220px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6] [scrollbar-color:var(--color-line-2)_transparent] [scrollbar-width:thin]">
             <PeerRow meta={self} name={handle ? `${handle} (you)` : "you"} now={now} />
-            {peers.map((p) => (
+            {peers.slice(0, MAX_PEERS_SHOWN).map((p) => (
               <PeerRow key={p.key} meta={p.meta} name={p.meta.handle || "anon"} now={now} />
             ))}
+            {peers.length > MAX_PEERS_SHOWN && <li className="py-0.5 text-dim">+{peers.length - MAX_PEERS_SHOWN} more</li>}
           </ul>
           {peers.length === 0 && status === "online" && (
             <p className="px-3 pb-2 text-xs text-dim">nobody else here yet. copy the link and send it to someone.</p>
@@ -210,6 +213,17 @@ export function RoomPanel({ room, settings, mode, task }: RoomPanelProps) {
             <button type="button" onClick={() => actions.leave()} className={smallBtn}>
               leave
             </button>
+            {isHost && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => (confirmClose ? actions.close() : setConfirmClose(true))}
+                onBlur={() => setConfirmClose(false)}
+                className={cn(smallBtn, confirmClose && "border-danger text-danger")}
+              >
+                {confirmClose ? "confirm close?" : "close room"}
+              </button>
+            )}
           </div>
         </>
       )}
