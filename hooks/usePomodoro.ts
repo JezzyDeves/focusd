@@ -443,6 +443,6 @@ export function usePomodoro() {
     log,
     intent,
     parked,
-    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, editIntent, park, unpark, clearParked },
+    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, editIntent, park, unpark, clearParked, log: push },
   };
 }

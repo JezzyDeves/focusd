@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePomodoro } from "@/hooks/usePomodoro";
+import { usePresence } from "@/hooks/usePresence";
 import { cn } from "@/lib/cn";
 import { LIMITS, MODES, fmt, fmtDur, stamp, type LogKind, type Mode } from "@/lib/pomodoro";
 import { Dial } from "./Dial";
@@ -43,6 +44,7 @@ function Clock() {
 export function Pomodoro() {
   const { settings, mode, running, alarming, remaining, total, progress, cycle, next, cued, stats, glitch, flash, log, intent, parked, actions } =
     usePomodoro();
+  const room = usePresence(settings.focusRoom, mode, running, actions.log);
   const [configOpen, setConfigOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +81,13 @@ export function Pomodoro() {
       </>
     );
   }
+
+  const roomLine =
+    room.status === "online"
+      ? `▲ ${room.focusing} other${room.focusing === 1 ? "" : "s"} focusing`
+      : room.status === "connecting"
+        ? "▲ connecting…"
+        : "▲ offline";
 
   return (
     <>
@@ -150,6 +159,7 @@ export function Pomodoro() {
               })}
             </div>
             <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
+            {room.status !== "off" && <div className="text-center text-[11px] tracking-[0.04em] text-dim tabular-nums">{roomLine}</div>}
           </div>
 
           {mode === "focus" && settings.intention && <IntentPanel intent={intent} onEdit={actions.editIntent} />}
@@ -216,6 +226,7 @@ export function Pomodoro() {
 
                 <ConfigComment>focus aids</ConfigComment>
                 <Toggle name="intention" hint="name the task before focusing" on={settings.intention} onToggle={() => actions.setFlag("intention", !settings.intention)} />
+                <Toggle name="focus_room" hint="see how many others are focusing" on={settings.focusRoom} onToggle={() => actions.setFlag("focusRoom", !settings.focusRoom)} />
 
                 <ConfigComment>sensory</ConfigComment>
                 <Toggle name="motion" hint="rain, glitch and blinking" on={settings.motion} onToggle={() => actions.setFlag("motion", !settings.motion)} />

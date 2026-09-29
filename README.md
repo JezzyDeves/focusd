@@ -11,6 +11,7 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Heads-up before the end**: `heads_up` plays a soft cue at 5 and 1 minutes left (skipping any that don't fit the timer), and the dial switches to `WRAP_UP` and shows what's next, so a session winds down instead of stopping abruptly.
 - **Session intention**: before a focus session, name the task and an if-then plan for distractions. Both are logged when the session starts. Turn this off with `intention`.
 - **Parking lot**: press `n` mid-session to jot down a stray thought and get back to work. The list stays hidden while you focus and comes back on your break.
+- **Focus room**: turn on `focus_room` to see how many other people are in a focus session right now (`▲ 3 others focusing`, under the dial). It's off by default, and nothing connects to a server until you turn it on. See [Focus room privacy](#focus-room-privacy).
 - **Sensory controls**: turn off `motion` (matrix rain, glitch, blinking), `scanlines` or the end-of-timer `flash`. The OS reduced-motion setting is respected as well.
 - **Daily stats**: sessions completed and focus time for today.
 - **Auto-start**: optionally roll straight into the next timer.
@@ -35,6 +36,8 @@ npm run dev
 
 Then open http://localhost:3000.
 
+The timer works with no setup. The optional `focus_room` needs a [Supabase](https://supabase.com) project, used only for Realtime Presence (no tables, no auth). Copy `.env.example` to `.env.local` and fill in the project URL and publishable key (or the legacy anon key) from the Supabase dashboard. The app joins a public channel, so leave Realtime's public channel access allowed. Without these variables, turning on `focus_room` just shows `offline`.
+
 | Script              | What it does                     |
 | ------------------- | -------------------------------- |
 | `npm run dev`       | Start the dev server             |
@@ -48,6 +51,7 @@ Then open http://localhost:3000.
 - React 19
 - Tailwind CSS v4: theme tokens (colors, fonts, shadows, animations) live in `@theme` in `app/globals.css`, and components are styled with utilities
 - Self-hosted fonts via Fontsource: VT323 for the digits, JetBrains Mono for everything else
+- `@supabase/realtime-js` for `focus_room` presence, loaded only when the toggle is on
 
 ## Project structure
 
@@ -68,12 +72,14 @@ components/pomodoro/
   MatrixRain.tsx      Background canvas animation
 hooks/
   usePomodoro.ts      Timer engine, cycle logic, heads-up cues, settings, stats, log, intent, parking lot, shortcuts
+  usePresence.ts      focus_room: joins the presence channel and counts peers in focus
 lib/
   cn.ts               Class-name join helper
   pomodoro.ts         Types, defaults, limits and formatters
   storage.ts          localStorage helpers
   audio.ts            Web Audio chiptune synth
   haptics.ts          Vibration cues
+  presence.ts         Supabase Realtime connection and peer counting for focus_room
 ```
 
 ## Theming
@@ -83,3 +89,15 @@ The accent color comes from `--accent`, which switches with `[data-mode]` on `<h
 ## How the timer works
 
 The timer counts down against an absolute end timestamp instead of counting ticks, so it stays accurate even when the browser throttles a background tab. After each focus session the cycle counter goes up. When it reaches the long-break interval the next break is a long one, and the counter resets after that long break ends. Skipping a session advances the cycle but doesn't count toward today's stats.
+
+## Focus room privacy
+
+With `focus_room` off (the default), the app opens no connections for it and doesn't even download the client library.
+
+With it on, the app opens one WebSocket to your Supabase project's Realtime server and joins the `focusd:global` presence channel. It sends:
+
+- `{ mode, running }`: whether you're in focus, a short break or a long break, and whether the timer is running. This is sent when you join and again only when one of them changes (start, pause, mode switch), never on each tick.
+- A random presence key, generated on each page load and never stored, which the presence protocol needs to tell clients apart.
+- Your Supabase publishable key, which the connection requires.
+
+No task text, parking-lot notes, stats, settings or account details are sent. Like any server, Supabase sees your IP address. If the connection drops, the count shows `offline` and the timer carries on as normal.
