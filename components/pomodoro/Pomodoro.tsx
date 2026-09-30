@@ -9,7 +9,7 @@ import { IntentPanel } from "./IntentPanel";
 import { MatrixRain } from "./MatrixRain";
 import { ParkingLot } from "./ParkingLot";
 import { Stepper } from "./Stepper";
-import { fileName, panel, panelHead } from "./styles";
+import { deskColumn, deskScroll, fileName, panel, panelHead, thinScroll } from "./styles";
 import { Toggle } from "./Toggle";
 
 const BOOT_LINES = 5;
@@ -86,8 +86,8 @@ export function Pomodoro() {
       {settings.scanlines && <div className="crt pointer-events-none fixed inset-0 z-50" aria-hidden="true" />}
       {flash > 0 && <div key={`flash-${flash}`} className="pointer-events-none fixed inset-0 z-40 animate-flash bg-accent opacity-0" aria-hidden="true" />}
 
-      <div className="relative z-10 mx-auto grid max-w-[520px] gap-[18px] px-4 pt-3.5 pb-10 desk:max-w-[1040px] desk:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] desk:gap-x-10 desk:pt-7 desk:pb-12">
-        <header className="flex items-center justify-between gap-3 border-b border-dashed border-line-2 pb-2.5 text-xs text-dim desk:col-span-full">
+      <div className="relative z-10 mx-auto grid max-w-[520px] gap-[18px] px-4 pt-3.5 pb-10 desk:h-dvh desk:max-w-none desk:grid-rows-[auto_auto_minmax(260px,1fr)] desk:gap-y-6 desk:px-8 desk:pt-5 desk:pb-6">
+        <header className="flex items-center justify-between gap-3 border-b border-dashed border-line-2 pb-2.5 text-xs text-dim">
           <span className="truncate text-accent">
             root@<b className="font-medium text-bright">focusd</b>:~$ ./pomodoro
             <span className="ml-0.5 inline-block h-[1.05em] w-[0.6em] animate-blink bg-accent align-[-0.18em]" />
@@ -95,8 +95,9 @@ export function Pomodoro() {
           <Clock />
         </header>
 
-        <main className="grid min-w-0 content-start gap-[18px]">
-          <nav className="grid grid-cols-3 gap-1.5" aria-label="Timer mode">
+        {/* Desktop: the dial on the left, its controls in a column beside it. */}
+        <main className="grid min-w-0 content-start gap-[18px] desk:grid-cols-[auto_minmax(0,460px)] desk:justify-center desk:gap-x-14">
+          <nav className="grid grid-cols-3 gap-1.5 desk:col-start-2 desk:self-end" aria-label="Timer mode">
             {(Object.keys(MODES) as Mode[]).map((m) => (
               <button
                 key={m}
@@ -110,7 +111,7 @@ export function Pomodoro() {
             ))}
           </nav>
 
-          <Dial progress={progress} running={running}>
+          <Dial progress={progress} running={running} className="desk:col-start-1 desk:row-span-2 desk:row-start-1">
             <span className="text-[max(11px,3.4cqi)] tracking-[0.14em] text-accent uppercase">
               {"// "}
               {MODES[mode].tag}
@@ -133,58 +134,61 @@ export function Pomodoro() {
             </span>
           </Dial>
 
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex flex-wrap justify-center gap-2" aria-hidden="true">
-              {Array.from({ length: every }, (_, i) => {
-                const done = mode === "long" || i < shown;
-                const current = mode === "focus" && i === shown;
-                return (
-                  <span
-                    key={i}
-                    className={cn(
-                      "h-2 w-[22px] border transition-colors duration-300",
-                      done ? "border-focus bg-focus shadow-pip" : current ? "animate-pip border-focus" : "border-line-2",
-                    )}
-                  />
-                );
-              })}
+          <div className="grid min-w-0 content-start gap-[18px] desk:col-start-2 desk:self-start">
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-wrap justify-center gap-2" aria-hidden="true">
+                {Array.from({ length: every }, (_, i) => {
+                  const done = mode === "long" || i < shown;
+                  const current = mode === "focus" && i === shown;
+                  return (
+                    <span
+                      key={i}
+                      className={cn(
+                        "h-2 w-[22px] border transition-colors duration-300",
+                        done ? "border-focus bg-focus shadow-pip" : current ? "animate-pip border-focus" : "border-line-2",
+                      )}
+                    />
+                  );
+                })}
+              </div>
+              <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
             </div>
-            <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
-          </div>
 
-          {mode === "focus" && settings.intention && <IntentPanel intent={intent} onEdit={actions.editIntent} />}
+            {mode === "focus" && settings.intention && <IntentPanel intent={intent} onEdit={actions.editIntent} />}
 
-          <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
-            <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
-              ↺ reset
-            </button>
-            <button
-              type="button"
-              onClick={actions.toggle}
-              className={cn(
-                btn,
-                "border-accent text-[15px] font-bold shadow-cta hover:shadow-cta-hover",
-                alarming ? "animate-pulse bg-accent text-void" : running ? "bg-transparent text-accent" : "bg-accent text-void",
-              )}
-            >
-              {alarming ? "■ stop alarm" : running ? "‖ pause" : paused ? "▶ resume" : "▶ start"}
-            </button>
-            <button type="button" onClick={actions.skip} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
-              skip ⇥
-            </button>
-          </div>
+            <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
+              <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
+                ↺ reset
+              </button>
+              <button
+                type="button"
+                onClick={actions.toggle}
+                className={cn(
+                  btn,
+                  "border-accent text-[15px] font-bold shadow-cta hover:shadow-cta-hover",
+                  alarming ? "animate-pulse bg-accent text-void" : running ? "bg-transparent text-accent" : "bg-accent text-void",
+                )}
+              >
+                {alarming ? "■ stop alarm" : running ? "‖ pause" : paused ? "▶ resume" : "▶ start"}
+              </button>
+              <button type="button" onClick={actions.skip} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
+                skip ⇥
+              </button>
+            </div>
 
-          <div className="text-center text-[11px] tracking-[0.03em] text-dim [@media(hover:none)]:hidden [&_kbd]:rounded-xs [&_kbd]:border [&_kbd]:border-line-2 [&_kbd]:px-[5px] [&_kbd]:py-px [&_kbd]:font-[inherit] [&_kbd]:text-ink">
-            <kbd>space</kbd> start/pause · <kbd>esc</kbd> stop alarm · <kbd>r</kbd> reset · <kbd>s</kbd> skip · <kbd>1</kbd>
-            <kbd>2</kbd>
-            <kbd>3</kbd> mode · <kbd>n</kbd> park a thought
+            <div className="text-center text-[11px] tracking-[0.03em] text-dim [@media(hover:none)]:hidden [&_kbd]:rounded-xs [&_kbd]:border [&_kbd]:border-line-2 [&_kbd]:px-[5px] [&_kbd]:py-px [&_kbd]:font-[inherit] [&_kbd]:text-ink">
+              <kbd>space</kbd> start/pause · <kbd>esc</kbd> stop alarm · <kbd>r</kbd> reset · <kbd>s</kbd> skip · <kbd>1</kbd>
+              <kbd>2</kbd>
+              <kbd>3</kbd> mode · <kbd>n</kbd> park a thought
+            </div>
           </div>
         </main>
 
-        <aside className="grid min-w-0 content-start gap-[18px]">
+        {/* Desktop: columns that fill the rest of the screen and scroll on their own. Config gets a column to itself; wide screens get three. */}
+        <aside className="grid min-w-0 content-start gap-[18px] desk:min-h-0 desk:grid-cols-2 desk:grid-rows-2 desk:content-stretch desk:gap-x-6 xl:grid-cols-3 xl:grid-rows-1">
           <ParkingLot parked={parked} hideList={running && mode === "focus"} onPark={actions.park} onRemove={actions.unpark} onClear={actions.clearParked} />
 
-          <section className={panel}>
+          <section className={cn(panel, deskColumn, "desk:col-start-2 desk:row-span-2 xl:col-start-auto xl:row-span-1", !configOpen && "desk:self-start")}>
             <button
               type="button"
               aria-expanded={configOpen}
@@ -198,7 +202,7 @@ export function Pomodoro() {
               </span>
             </button>
             {configOpen && (
-              <div id="config-body" className="grid gap-0.5 px-3 pt-0 pb-3">
+              <div id="config-body" className={cn("grid content-start gap-0.5 px-3 pt-0 pb-3", deskScroll)}>
                 <ConfigComment>timer</ConfigComment>
                 <Stepper id="cfg-focus" name="focus_len" hint="length of each pomodoro" value={settings.focus} limits={LIMITS.focus} unit="min" onChange={(v) => actions.setNumber("focus", v)} />
                 <Stepper id="cfg-short" name="short_break" hint="rest between sessions" value={settings.short} limits={LIMITS.short} unit="min" onChange={(v) => actions.setNumber("short", v)} />
@@ -237,7 +241,7 @@ export function Pomodoro() {
             )}
           </section>
 
-          <section className={panel}>
+          <section className={cn(panel, deskColumn)}>
             <div className={cn(panelHead, "border-line")}>
               <span className={fileName}>/var/log/focusd.log</span>
               <span className="flex gap-3.5 tabular-nums [&_b]:font-medium [&_b]:text-bright">
@@ -252,7 +256,7 @@ export function Pomodoro() {
             <div
               ref={logRef}
               aria-live="polite"
-              className="h-[220px] overflow-y-auto px-3 py-2.5 text-xs leading-[1.7] [scrollbar-color:var(--color-line-2)_transparent] [scrollbar-width:thin] desk:h-[300px]"
+              className={cn("h-[220px] overflow-y-auto px-3 py-2.5 text-xs leading-[1.7]", thinScroll, deskScroll, "desk:h-auto")}
             >
               {log.map((l, i) => (
                 <div
