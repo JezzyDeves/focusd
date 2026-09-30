@@ -13,8 +13,10 @@ export type Settings = {
   autoStart: boolean;
   /** Play the chiptune alert. */
   sound: boolean;
-  /** Keep repeating the alert until it's stopped. */
+  /** Repeat the alert instead of playing it once. */
   repeatAlert: boolean;
+  /** How many times a repeating alert plays; 0 loops it until it's stopped. */
+  repeatCount: number;
   /** Alert volume, 1–10. */
   volume: number;
   /** Use a gentle sine chime instead of the square-wave chiptune. */
@@ -54,7 +56,7 @@ export type FlagSetting =
   | "scanlines"
   | "flash";
 
-export type NumericSetting = "focus" | "short" | "long" | "every" | "volume";
+export type NumericSetting = "focus" | "short" | "long" | "every" | "volume" | "repeatCount";
 
 /** What the next focus session is for, and what to do when distracted. */
 export type Intent = { task: string; then: string };
@@ -75,6 +77,7 @@ export const DEFAULTS: Settings = {
   autoStart: false,
   sound: true,
   repeatAlert: false,
+  repeatCount: 0,
   volume: 6,
   softTone: false,
   vibrate: false,
@@ -103,6 +106,7 @@ export const LIMITS: Record<NumericSetting, [number, number]> = {
   long: [1, 60],
   every: [2, 8],
   volume: [1, 10],
+  repeatCount: [0, 20],
 };
 
 export const MODES: Record<Mode, { label: string; tag: string; key: NumericSetting }> = {
@@ -117,6 +121,7 @@ export const SETTING_NAMES: Record<NumericSetting, string> = {
   long: "long_break_len",
   every: "long_break_every",
   volume: "volume",
+  repeatCount: "repeat_count",
 };
 
 /** Unit suffix used when a numeric setting is logged. */
@@ -126,6 +131,7 @@ export const SETTING_UNITS: Record<NumericSetting, string> = {
   long: "m",
   every: " sessions",
   volume: "/10",
+  repeatCount: "x",
 };
 
 export const FLAG_NAMES: Record<FlagSetting, string> = {

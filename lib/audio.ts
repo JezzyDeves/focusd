@@ -108,31 +108,45 @@ export const playCue = () => play(CUE, 0.7);
 let alarm: AudioBufferSourceNode | null = null;
 let alarmToken = 0;
 
+/** Seconds from the start of a voice to the end of its last note. */
+const lengthOf = (v: Voice) => Math.max(...v.notes.map(([, at, dur]) => at + dur)) + 0.04;
+
 /**
- * Loop the done alert until stopAlarm() is called.
+ * Loop the done alert `times` times, or until stopAlarm() is called when `times` is 0.
+ * `onEnd` fires if the alert finishes on its own.
  *
  * The jingle is rendered once into a buffer and looped by the audio thread, so it keeps
  * repeating on time even when the browser throttles timers in a background tab.
  */
-export async function startAlarm() {
+export async function startAlarm(times = 0, onEnd?: () => void) {
   if (!ctx || alarm) return;
   const token = ++alarmToken;
   try {
     const { sampleRate } = ctx;
+    const voice = soft ? DONE_SOFT : DONE;
     const loop = soft ? ALARM_LOOP_SOFT_S : ALARM_LOOP_S;
     const offline = new OfflineAudioContext(1, Math.ceil(loop * sampleRate), sampleRate);
-    schedule(offline, soft ? DONE_SOFT : DONE, 0.02);
+    schedule(offline, voice, 0.02);
     const buffer = await offline.startRendering();
     if (token !== alarmToken || !ctx) return;
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.loop = true;
     src.connect(ctx.destination);
-    src.start();
+    src.onended = () => {
+      if (token === alarmToken) onEnd?.();
+    };
+    const t0 = ctx.currentTime;
+    src.start(t0);
+    // Cut the last loop off once its jingle has played, not after its trailing silence.
+    if (times > 0) src.stop(t0 + (times - 1) * loop + 0.02 + lengthOf(voice));
     alarm = src;
   } catch {
     // Fall back to a single alert where offline rendering isn't supported.
-    if (token === alarmToken) playDone();
+    if (token === alarmToken) {
+      playDone();
+      if (times > 0) onEnd?.();
+    }
   }
 }
 

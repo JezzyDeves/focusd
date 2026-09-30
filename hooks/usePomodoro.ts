@@ -155,9 +155,15 @@ export function usePomodoro() {
     document.title = `${fmt(remaining)} · ${MODES[mode].label} · focusd`;
   }, [remaining, mode]);
 
+  // Read through a ref so changing the count mid-alert doesn't restart it.
+  const repeatCount = useRef(settings.repeatCount);
+  useEffect(() => {
+    repeatCount.current = settings.repeatCount;
+  }, [settings.repeatCount]);
+
   useEffect(() => {
     if (!alarming) return;
-    void startAlarm();
+    void startAlarm(repeatCount.current, () => setAlarming(false));
     return stopAlarm;
   }, [alarming]);
 
@@ -388,7 +394,8 @@ export function usePomodoro() {
     (key: NumericSetting, val: number) => {
       if (settings[key] === val) return;
       setSettings((s) => ({ ...s, [key]: val }));
-      const msg = `config :: ${SETTING_NAMES[key]} = ${val}${SETTING_UNITS[key]}`;
+      const shown = key === "repeatCount" && val === 0 ? "until stopped" : `${val}${SETTING_UNITS[key]}`;
+      const msg = `config :: ${SETTING_NAMES[key]} = ${shown}`;
       if (MODES[mode].key === key) {
         if (running) {
           push(`${msg} (applies next session)`);

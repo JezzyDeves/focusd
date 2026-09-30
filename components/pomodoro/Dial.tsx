@@ -4,6 +4,7 @@ type DialProps = {
   /** 0 → 1, how much of the current timer has elapsed. */
   progress: number;
   running: boolean;
+  className?: string;
   children: React.ReactNode;
 };
 
@@ -12,11 +13,11 @@ const C = 2 * Math.PI * R;
 const TICKS = 60;
 
 /** The clock face: 60 ticks that light up as time passes, a progress arc and a slow-spinning orbit. */
-export function Dial({ progress, running, children }: DialProps) {
+export function Dial({ progress, running, className, children }: DialProps) {
   const lit = Math.floor(progress * TICKS);
 
   return (
-    <div className="@container relative mx-auto aspect-square w-[min(100%,360px)] max-w-full">
+    <div className={cn("@container relative mx-auto aspect-square w-[min(100%,360px)] max-w-full desk:w-[clamp(300px,44dvh,460px)]", className)}>
       <svg viewBox="0 0 300 300" aria-hidden="true" className="absolute inset-0 size-full overflow-visible">
         {Array.from({ length: TICKS }, (_, i) => {
           const a = (i / TICKS) * Math.PI * 2 - Math.PI / 2;

@@ -7,7 +7,7 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Configurable cycle**: set the focus length, the short and long break lengths, and how many sessions run before a long break. Settings are saved in `localStorage`.
 - **Mode-aware theme**: the accent turns green for focus, cyan for short breaks and amber for long breaks.
 - **CRT atmosphere**: a matrix-rain canvas, scanlines, a 60-tick dial that lights up as time passes, glitching digits on each start and a typewriter-style event log.
-- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Turn on `repeat_alert` to keep it looping until you stop it with the main button or `esc`. `volume` sets how loud it is, `soft_tone` swaps it for a gentle sine chime, and `vibrate` adds a buzz on phones that support it.
+- **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Turn on `repeat_alert` to loop it, and set `repeat_count` to how many times it plays, or `0` to keep it going until you stop it with the main button or `esc`. `volume` sets how loud it is, `soft_tone` swaps it for a gentle sine chime, and `vibrate` adds a buzz on phones that support it.
 - **Desktop notifications**: turn on `notify` to get a desktop pop-up when a timer ends, so you hear about it even with focusd in a background tab. The browser asks for permission the first time; clicking the notification brings focusd back to the front.
 - **Heads-up before the end**: `heads_up` plays a soft cue at 5 and 1 minutes left (skipping any that don't fit the timer), and the dial switches to `WRAP_UP` and shows what's next, so a session winds down instead of stopping abruptly.
 - **Session intention**: before a focus session, name the task and an if-then plan for distractions. Both are logged when the session starts. Turn this off with `intention`.
@@ -125,7 +125,7 @@ Then use it in `DATABASE_URL` (on the Supabase pooler the user is `focusd_app.<p
 
 ## Theming
 
-The accent color comes from `--accent`, which switches with `[data-mode]` on `<html>`. `[data-motion="off"]` on `<html>` stills animation the same way `prefers-reduced-motion` does. It's exposed to Tailwind through `@theme inline`, so `text-accent`, `bg-accent`, `stroke-accent/40` and the glow shadows all follow the current mode. A custom `desk:` breakpoint (60rem) switches to the two-column desktop layout.
+The accent color comes from `--accent`, which switches with `[data-mode]` on `<html>`. `[data-motion="off"]` on `<html>` stills animation the same way `prefers-reduced-motion` does. It's exposed to Tailwind through `@theme inline`, so `text-accent`, `bg-accent`, `stroke-accent/40` and the glow shadows all follow the current mode. A custom `desk:` breakpoint (60rem) switches to the full-screen desktop layout: the timer across the top, with the parking lot, config and log as columns filling the rest of the screen.
 
 ## How the timer works
 
