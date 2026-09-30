@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { cn } from "@/lib/cn";
 import { PARK_INPUT_ID, TEXT_MAX, type Parked } from "@/lib/pomodoro";
-import { fileName, panel, panelHead, promptInput } from "./styles";
+import { deskColumn, deskScroll, fileName, panel, panelHead, promptInput, thinScroll } from "./styles";
 
 type ParkingLotProps = {
   parked: Parked[];
@@ -20,7 +20,7 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
   const count = parked.length;
 
   return (
-    <section className={panel}>
+    <section className={cn(panel, deskColumn)}>
       <div className={cn(panelHead, "border-line")}>
         <span className={fileName}>~/parking_lot.txt</span>
         {count > 0 && !hideList ? (
@@ -71,7 +71,7 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
       ) : count === 0 ? (
         <p className="px-3 py-2.5 text-xs text-dim">nothing parked. press n mid-session to jot a thought and keep going.</p>
       ) : (
-        <ul className="max-h-[180px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6] [scrollbar-color:var(--color-line-2)_transparent] [scrollbar-width:thin]">
+        <ul className={cn("max-h-[180px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6]", thinScroll, deskScroll, "desk:max-h-none")}>
           {parked.map((p) => (
             <li key={p.id} className="flex items-start gap-2.5 py-0.5">
               <span className="flex-none pt-1 text-dim tabular-nums">[{p.t.slice(0, 5)}]</span>
