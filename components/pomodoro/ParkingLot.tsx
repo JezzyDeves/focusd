@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { StickyNote, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PARK_INPUT_ID, TEXT_MAX, type Parked } from "@/lib/pomodoro";
 import { deskColumn, deskScroll, fileName, panel, panelHead, promptInput, thinScroll } from "./styles";
@@ -22,9 +23,13 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
   return (
     <section className={cn(panel, deskColumn)}>
       <div className={cn(panelHead, "border-line")}>
-        <span className={fileName}>~/parking_lot.txt</span>
+        <span className={fileName}>
+          <StickyNote size={13} />
+          ~/parking_lot.txt
+        </span>
         {count > 0 && !hideList ? (
-          <button type="button" onClick={onClear} className="focus-ring -my-1 min-h-8 cursor-pointer rounded-xs px-1.5 text-dim hover:text-bright">
+          <button type="button" onClick={onClear} className="focus-ring -my-1 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-xs px-1.5 text-dim hover:text-bright">
+            <Trash2 size={13} className="flex-none" />
             clear all
           </button>
         ) : (
@@ -80,9 +85,9 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
                 type="button"
                 aria-label={`Remove: ${p.text}`}
                 onClick={() => onRemove(p.id)}
-                className="focus-ring min-h-8 flex-none cursor-pointer rounded-xs px-1.5 text-dim hover:text-bright"
+                className="focus-ring inline-flex min-h-8 flex-none cursor-pointer items-center rounded-xs px-1.5 text-dim hover:text-bright"
               >
-                [x]
+                <X size={14} />
               </button>
             </li>
           ))}

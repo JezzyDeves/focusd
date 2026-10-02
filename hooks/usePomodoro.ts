@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureAudio, playCue, playDone, playStart, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
+import { ensureAudio, playCue, playDone, playPause, playStart, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
 import { buzzCue, buzzDone } from "@/lib/haptics";
 import { notify, requestNotify } from "@/lib/notify";
 import {
@@ -326,13 +326,15 @@ export function usePomodoro() {
   }, [settings.sound, settings.intention, intent, remaining, total, mode, push, silence, setEnd]);
 
   const pause = useCallback(() => {
+    ensureAudio();
     silence();
+    if (settings.sound) playPause();
     const left = endAt.current ? Math.max(0, endAt.current - Date.now()) : remaining;
     setEnd(null);
     setRemaining(left);
     setRunning(false);
     push(`SIGSTOP :: paused at ${fmt(left)}`, "warn");
-  }, [remaining, push, silence, setEnd]);
+  }, [settings.sound, remaining, push, silence, setEnd]);
 
   /** The main button: stops a ringing alert first, otherwise starts or pauses. */
   const toggle = useCallback(() => {

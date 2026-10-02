@@ -75,6 +75,18 @@ const START: Voice = {
 
 const START_SOFT: Voice = { wave: "sine", attack: 0.03, notes: [[660, 0, 0.25]] };
 
+/** The start blip played backwards: falling instead of rising, so it reads as "stopped". */
+const PAUSE: Voice = {
+  wave: "square",
+  attack: 0.01,
+  notes: [
+    [990, 0, 0.06],
+    [660, 0.07, 0.08],
+  ],
+};
+
+const PAUSE_SOFT: Voice = { wave: "sine", attack: 0.03, notes: [[495, 0, 0.25]] };
+
 /** Sine carries less energy than square at the same gain, so lift it to sound about as loud. */
 const gainFor = (v: Voice, scale = 1) => peak * scale * (v.wave === "sine" ? 2.5 : 1);
 
@@ -101,6 +113,8 @@ function play(voice: Voice, scale?: number) {
 export const playDone = () => play(soft ? DONE_SOFT : DONE);
 
 export const playStart = () => play(soft ? START_SOFT : START);
+
+export const playPause = () => play(soft ? PAUSE_SOFT : PAUSE);
 
 /** Quieter than the alert so it reads as a heads-up. */
 export const playCue = () => play(CUE, 0.7);
