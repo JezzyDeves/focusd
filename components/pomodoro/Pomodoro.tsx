@@ -1,6 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  Bell,
+  BellOff,
+  Brain,
+  CheckCheck,
+  ChevronDown,
+  Clock as ClockIcon,
+  Coffee,
+  Eye,
+  Keyboard,
+  Pause,
+  Play,
+  RotateCcw,
+  ScrollText,
+  Settings,
+  SkipForward,
+  Sofa,
+  Target,
+  Timer,
+  type LucideIcon,
+} from "lucide-react";
 import { usePomodoro } from "@/hooks/usePomodoro";
 import { cn } from "@/lib/cn";
 import { LIMITS, MODES, fmt, fmtDur, stamp, type LogKind, type Mode } from "@/lib/pomodoro";
@@ -22,12 +43,24 @@ const LOG_COLOR: Record<LogKind, string> = {
   warn: "text-danger",
 };
 
+const MODE_ICON: Record<Mode, LucideIcon> = {
+  focus: Brain,
+  short: Coffee,
+  long: Sofa,
+};
+
 const btn =
-  "focus-ring min-h-[52px] cursor-pointer rounded-xs border px-2.5 leading-none font-medium tracking-[0.06em] uppercase transition active:translate-y-px";
+  "focus-ring inline-flex min-h-[52px] cursor-pointer items-center justify-center gap-1.5 rounded-xs border px-2.5 leading-none font-medium tracking-[0.06em] uppercase transition active:translate-y-px";
 
 /** A `# section` comment between groups of config rows. */
-function ConfigComment({ children }: { children: string }) {
-  return <div className="pt-3 pb-0.5 text-[11px] tracking-[0.04em] text-dim"># {children}</div>;
+function ConfigComment({ icon: Icon, children }: { icon: LucideIcon; children: string }) {
+  return (
+    <div className="flex items-center gap-1.5 pt-3 pb-0.5 text-[11px] tracking-[0.04em] text-dim">
+      <Icon size={12} className="flex-none" />
+      {"# "}
+      {children}
+    </div>
+  );
 }
 
 function Clock() {
@@ -37,7 +70,12 @@ function Clock() {
     const id = window.setInterval(() => setNow(stamp()), 1000);
     return () => window.clearInterval(id);
   }, []);
-  return <span className="whitespace-nowrap tabular-nums">{now ?? "--:--:--"}</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
+      <ClockIcon size={12} className="flex-none" />
+      {now ?? "--:--:--"}
+    </span>
+  );
 }
 
 export function Pomodoro() {
@@ -98,17 +136,21 @@ export function Pomodoro() {
         {/* Desktop: the dial on the left, its controls in a column beside it. */}
         <main className="grid min-w-0 content-start gap-[18px] desk:grid-cols-[auto_minmax(0,460px)] desk:justify-center desk:gap-x-14">
           <nav className="grid grid-cols-3 gap-1.5 desk:col-start-2 desk:self-end" aria-label="Timer mode">
-            {(Object.keys(MODES) as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={mode === m}
-                onClick={() => actions.pickMode(m)}
-                className="focus-ring min-h-11 cursor-pointer rounded-xs border border-line bg-transparent px-1.5 text-xs leading-none font-medium tracking-[0.04em] text-dim transition hover:border-line-2 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-void aria-pressed:shadow-glow"
-              >
-                {MODES[m].label}
-              </button>
-            ))}
+            {(Object.keys(MODES) as Mode[]).map((m) => {
+              const Icon = MODE_ICON[m];
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={mode === m}
+                  onClick={() => actions.pickMode(m)}
+                  className="focus-ring inline-flex min-h-11 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-line bg-transparent px-1.5 py-1.5 text-xs leading-none font-medium tracking-[0.04em] text-dim transition hover:border-line-2 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-void aria-pressed:shadow-glow sm:flex-row sm:gap-1.5"
+                >
+                  <Icon size={14} className="flex-none" />
+                  <span className="truncate">{MODES[m].label}</span>
+                </button>
+              );
+            })}
           </nav>
 
           <Dial progress={progress} running={running} className="desk:col-start-1 desk:row-span-2 desk:row-start-1">
@@ -158,7 +200,8 @@ export function Pomodoro() {
 
             <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
               <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
-                ↺ reset
+                <RotateCcw size={15} className="flex-none" />
+                reset
               </button>
               <button
                 type="button"
@@ -169,14 +212,31 @@ export function Pomodoro() {
                   alarming ? "animate-pulse bg-accent text-void" : running ? "bg-transparent text-accent" : "bg-accent text-void",
                 )}
               >
-                {alarming ? "■ stop alarm" : running ? "‖ pause" : paused ? "▶ resume" : "▶ start"}
+                {alarming ? (
+                  <>
+                    <BellOff size={17} className="flex-none" />
+                    stop alarm
+                  </>
+                ) : running ? (
+                  <>
+                    <Pause size={17} className="flex-none" />
+                    pause
+                  </>
+                ) : (
+                  <>
+                    <Play size={17} className="flex-none" />
+                    {paused ? "resume" : "start"}
+                  </>
+                )}
               </button>
               <button type="button" onClick={actions.skip} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
-                skip ⇥
+                skip
+                <SkipForward size={15} className="flex-none" />
               </button>
             </div>
 
             <div className="text-center text-[11px] tracking-[0.03em] text-dim [@media(hover:none)]:hidden [&_kbd]:rounded-xs [&_kbd]:border [&_kbd]:border-line-2 [&_kbd]:px-[5px] [&_kbd]:py-px [&_kbd]:font-[inherit] [&_kbd]:text-ink">
+              <Keyboard size={13} className="mr-1 inline align-[-0.2em]" />
               <kbd>space</kbd> start/pause · <kbd>esc</kbd> stop alarm · <kbd>r</kbd> reset · <kbd>s</kbd> skip · <kbd>1</kbd>
               <kbd>2</kbd>
               <kbd>3</kbd> mode · <kbd>n</kbd> park a thought
@@ -196,21 +256,22 @@ export function Pomodoro() {
               onClick={() => setConfigOpen((o) => !o)}
               className={cn(panelHead, "focus-ring cursor-pointer hover:text-ink", configOpen ? "border-line" : "border-transparent")}
             >
-              <span className={fileName}>~/.focusd/config.yml</span>
-              <span className={cn("transition-transform duration-200", !configOpen && "-rotate-90")} aria-hidden="true">
-                ▾
+              <span className={fileName}>
+                <Settings size={13} />
+                ~/.focusd/config.yml
               </span>
+              <ChevronDown size={15} className={cn("flex-none transition-transform duration-200", !configOpen && "-rotate-90")} />
             </button>
             {configOpen && (
               <div id="config-body" className={cn("grid content-start gap-0.5 px-3 pt-0 pb-3", deskScroll)}>
-                <ConfigComment>timer</ConfigComment>
+                <ConfigComment icon={Timer}>timer</ConfigComment>
                 <Stepper id="cfg-focus" name="focus_len" hint="length of each pomodoro" value={settings.focus} limits={LIMITS.focus} unit="min" onChange={(v) => actions.setNumber("focus", v)} />
                 <Stepper id="cfg-short" name="short_break" hint="rest between sessions" value={settings.short} limits={LIMITS.short} unit="min" onChange={(v) => actions.setNumber("short", v)} />
                 <Stepper id="cfg-long" name="long_break" hint="rest after a full cycle" value={settings.long} limits={LIMITS.long} unit="min" onChange={(v) => actions.setNumber("long", v)} />
                 <Stepper id="cfg-every" name="long_every" hint="sessions per cycle" value={settings.every} limits={LIMITS.every} unit="sess" onChange={(v) => actions.setNumber("every", v)} />
                 <Toggle name="auto_start" hint="roll into the next timer" on={settings.autoStart} onToggle={() => actions.setFlag("autoStart", !settings.autoStart)} />
 
-                <ConfigComment>alerts</ConfigComment>
+                <ConfigComment icon={Bell}>alerts</ConfigComment>
                 <Toggle name="heads_up" hint="soft cue at 5m and 1m left" on={settings.headsUp} onToggle={() => actions.setFlag("headsUp", !settings.headsUp)} />
                 <Toggle name="sound" hint="play a tone when time's up" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
                 <Toggle name="soft_tone" hint="gentle chime, not chiptune" on={settings.softTone} onToggle={() => actions.setFlag("softTone", !settings.softTone)} />
@@ -230,10 +291,10 @@ export function Pomodoro() {
                 <Toggle name="vibrate" hint="buzz on alerts (phones)" on={settings.vibrate} onToggle={() => actions.setFlag("vibrate", !settings.vibrate)} />
                 <Toggle name="notify" hint="desktop pop-up when time's up" on={settings.notify} onToggle={() => actions.setFlag("notify", !settings.notify)} />
 
-                <ConfigComment>focus aids</ConfigComment>
+                <ConfigComment icon={Target}>focus aids</ConfigComment>
                 <Toggle name="intention" hint="name the task before focusing" on={settings.intention} onToggle={() => actions.setFlag("intention", !settings.intention)} />
 
-                <ConfigComment>sensory</ConfigComment>
+                <ConfigComment icon={Eye}>sensory</ConfigComment>
                 <Toggle name="motion" hint="rain, glitch and blinking" on={settings.motion} onToggle={() => actions.setFlag("motion", !settings.motion)} />
                 <Toggle name="scanlines" hint="CRT lines and vignette" on={settings.scanlines} onToggle={() => actions.setFlag("scanlines", !settings.scanlines)} />
                 <Toggle name="flash" hint="flash the screen at time up" on={settings.flash} onToggle={() => actions.setFlag("flash", !settings.flash)} />
@@ -243,12 +304,17 @@ export function Pomodoro() {
 
           <section className={cn(panel, deskColumn)}>
             <div className={cn(panelHead, "border-line")}>
-              <span className={fileName}>/var/log/focusd.log</span>
-              <span className="flex gap-3.5 tabular-nums [&_b]:font-medium [&_b]:text-bright">
+              <span className={fileName}>
+                <ScrollText size={13} />
+                /var/log/focusd.log
+              </span>
+              <span className="flex gap-3.5 tabular-nums [&_b]:font-medium [&_b]:text-bright [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1">
                 <span>
+                  <CheckCheck size={13} className="flex-none" />
                   today <b>{stats.sessions}</b>
                 </span>
                 <span>
+                  <Timer size={13} className="flex-none" />
                   focus <b>{fmtDur(stats.focusMs)}</b>
                 </span>
               </span>
