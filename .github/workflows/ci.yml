@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # The app connects as the least-privilege role the migrations create.
+      DATABASE_URL: postgresql://focusd_app:ci@localhost:5432/postgres
+      RATE_LIMIT_SECRET: ci
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - run: npm run build
+
+      - name: Apply migrations
+        run: npm run db:deploy
+      - name: Enable the app role
+        run: psql "$DIRECT_URL" -c "ALTER ROLE focusd_app WITH LOGIN PASSWORD 'ci'"
+
+      - name: API smoke test
+        run: |
+          npm start -- -p 3000 > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3000 && break; sleep 1; done
+          node scripts/smoke-api.mjs http://localhost:3000
+      - name: Server log
+        if: failure()
+        run: cat server.log
