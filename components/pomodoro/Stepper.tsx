@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Minus, Plus } from "lucide-react";
 import { clamp } from "@/lib/pomodoro";
 import { ConfigRow } from "./ConfigRow";
 
@@ -15,7 +16,7 @@ type StepperProps = {
 };
 
 const stepBtn =
-  "focus-ring size-10 cursor-pointer bg-panel-2 text-lg leading-none font-medium text-ink transition-colors enabled:hover:bg-accent enabled:hover:text-void disabled:cursor-default disabled:text-line-2";
+  "focus-ring inline-flex size-10 cursor-pointer items-center justify-center bg-panel-2 text-ink transition-colors enabled:hover:bg-accent enabled:hover:text-void disabled:cursor-default disabled:text-line-2";
 
 /** A labelled number input with − / + buttons, clamped to `limits`. */
 export function Stepper({ id, name, hint, value, limits, unit, onChange }: StepperProps) {
@@ -33,7 +34,7 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
     <ConfigRow name={name} hint={hint} htmlFor={id}>
       <div className="flex items-center overflow-hidden rounded-xs border border-line-2">
         <button type="button" className={stepBtn} aria-label={`Decrease ${name}`} disabled={value <= min} onClick={() => onChange(clamp(value - 1, limits))}>
-          −
+          <Minus size={16} />
         </button>
         <input
           id={id}
@@ -54,7 +55,7 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
           }}
         />
         <button type="button" className={stepBtn} aria-label={`Increase ${name}`} disabled={value >= max} onClick={() => onChange(clamp(value + 1, limits))}>
-          +
+          <Plus size={16} />
         </button>
       </div>
       <span className="text-xs text-dim">{unit}</span>
