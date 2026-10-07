@@ -94,6 +94,8 @@ export function Pomodoro() {
   const digits = fmt(remaining);
   const paused = !running && remaining < total;
   const wrapping = running && cued != null;
+  /** The task can be named (typed or picked from the parking lot) before a focus session. */
+  const canPickTask = mode === "focus" && settings.intention;
   const status = alarming ? "TIME_UP" : wrapping ? "WRAP_UP" : running ? "RUNNING" : paused ? "PAUSED" : "READY";
 
   let caption: React.ReactNode;
@@ -196,7 +198,7 @@ export function Pomodoro() {
               <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
             </div>
 
-            {mode === "focus" && settings.intention && <IntentPanel intent={intent} onEdit={actions.editIntent} />}
+            {canPickTask && <IntentPanel task={intent.task} parked={parked} onTask={actions.setTask} />}
 
             <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
               <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
@@ -246,7 +248,15 @@ export function Pomodoro() {
 
         {/* Desktop: columns that fill the rest of the screen and scroll on their own. Config gets a column to itself; wide screens get three. */}
         <aside className="grid min-w-0 content-start gap-[18px] desk:min-h-0 desk:grid-cols-2 desk:grid-rows-2 desk:content-stretch desk:gap-x-6 xl:grid-cols-3 xl:grid-rows-1">
-          <ParkingLot parked={parked} hideList={running && mode === "focus"} onPark={actions.park} onRemove={actions.unpark} onClear={actions.clearParked} />
+          <ParkingLot
+            parked={parked}
+            hideList={running && mode === "focus"}
+            active={canPickTask ? intent.task : ""}
+            onFocus={canPickTask ? actions.setTask : undefined}
+            onPark={actions.park}
+            onRemove={actions.unpark}
+            onClear={actions.clearParked}
+          />
 
           <section className={cn(panel, deskColumn, "desk:col-start-2 desk:row-span-2 xl:col-start-auto xl:row-span-1", !configOpen && "desk:self-start")}>
             <button
