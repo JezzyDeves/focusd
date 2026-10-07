@@ -111,6 +111,8 @@ export function Pomodoro() {
   const digits = fmt(remaining);
   const paused = !running && remaining < total;
   const wrapping = running && cued != null;
+  /** The task can be named (typed or picked from the parking lot) before a focus session. */
+  const canPickTask = mode === "focus" && settings.intention;
   const status = alarming
     ? "TIME_UP"
     : wrapping
@@ -264,8 +266,8 @@ export function Pomodoro() {
               </div>
             </div>
 
-            {mode === "focus" && settings.intention && (
-              <IntentPanel intent={intent} onEdit={actions.editIntent} />
+            {canPickTask && (
+              <IntentPanel task={intent.task} parked={parked} onTask={actions.setTask} />
             )}
 
             <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
@@ -338,6 +340,8 @@ export function Pomodoro() {
           <ParkingLot
             parked={parked}
             hideList={running && mode === "focus"}
+            active={canPickTask ? intent.task : ""}
+            onFocus={canPickTask ? actions.setTask : undefined}
             onPark={actions.park}
             onRemove={actions.unpark}
             onClear={actions.clearParked}

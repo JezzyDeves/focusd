@@ -74,7 +74,7 @@ export function usePomodoro() {
   const [alarming, setAlarming] = useState(false);
   /** Minutes-left mark of the last heads-up for the current timer, or null before the first. */
   const [cued, setCued] = useState<number | null>(null);
-  const [intent, setIntent] = useState<Intent>({ task: "", then: "" });
+  const [intent, setIntent] = useState<Intent>({ task: "" });
   const [parked, setParked] = useState<Parked[]>([]);
 
   const endAt = useRef<number | null>(null);
@@ -342,9 +342,7 @@ export function usePomodoro() {
     );
     if (fresh && mode === "focus" && settings.intention) {
       const task = intent.task.trim();
-      const then = intent.then.trim();
       if (task) push(`task :: ${task}`, "ok");
-      if (then) push(`if distracted → ${then}`);
     }
   }, [settings.sound, settings.intention, intent, remaining, total, mode, push, silence]);
 
@@ -439,9 +437,7 @@ export function usePomodoro() {
     [push, silence],
   );
 
-  const editIntent = useCallback((field: keyof Intent, val: string) => {
-    setIntent((i) => ({ ...i, [field]: val.slice(0, TEXT_MAX) }));
-  }, []);
+  const setTask = useCallback((val: string) => setIntent({ task: val.slice(0, TEXT_MAX) }), []);
 
   /** Set a stray thought aside without leaving the session. */
   const park = useCallback(
@@ -466,7 +462,7 @@ export function usePomodoro() {
   useEffect(() => {
     keys.current = (e) => {
       const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase() ?? "";
-      if (tag === "input" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (tag === "input" || tag === "select" || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "Space" && tag !== "button") {
         e.preventDefault();
         toggle();
@@ -516,7 +512,7 @@ export function usePomodoro() {
       pickMode,
       setNumber,
       setFlag,
-      editIntent,
+      setTask,
       park,
       unpark,
       clearParked,

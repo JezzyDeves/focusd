@@ -27,7 +27,7 @@ export type Settings = {
   notify: boolean;
   /** Give a soft heads-up at each of HEADS_UP_MIN before a timer ends. */
   headsUp: boolean;
-  /** Ask what each focus session is for, plus an if-then plan for distractions. */
+  /** Ask what each focus session is for. */
   intention: boolean;
   /** Matrix rain, glitching digits, blinking and other animation. */
   motion: boolean;
@@ -52,8 +52,8 @@ export type FlagSetting =
 
 export type NumericSetting = "focus" | "short" | "long" | "every" | "volume" | "repeatCount";
 
-/** What the next focus session is for, and what to do when distracted. */
-export type Intent = { task: string; then: string };
+/** What the next focus session is for. */
+export type Intent = { task: string };
 
 /** A stray thought set aside mid-session to deal with later. */
 export type Parked = { id: number; t: string; text: string };

@@ -35,11 +35,7 @@ export const loadStats = (): Stats => {
 };
 export const saveStats = (s: Stats) => write(STATS_KEY, s);
 
-export const loadIntent = (): Intent => ({
-  task: "",
-  then: "",
-  ...(read<Partial<Intent>>(INTENT_KEY) ?? {}),
-});
+export const loadIntent = (): Intent => ({ task: read<Partial<Intent>>(INTENT_KEY)?.task ?? "" });
 export const saveIntent = (i: Intent) => write(INTENT_KEY, i);
 
 export const loadParked = (): Parked[] => {

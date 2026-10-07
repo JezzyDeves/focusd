@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { StickyNote, Trash2, X } from "lucide-react";
+import { StickyNote, Target, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PARK_INPUT_ID, TEXT_MAX, type Parked } from "@/lib/pomodoro";
 import {
@@ -18,15 +18,28 @@ type ParkingLotProps = {
   parked: Parked[];
   /** Keep the list out of sight during a running focus session, so it doesn't pull attention back. */
   hideList: boolean;
+  /** Text of the current focus task, so the thought it came from is marked as active. */
+  active: string;
+  /** Make a thought the focus task. Left out when there's no task to set (not in focus, or `intention` is off). */
+  onFocus?: (text: string) => void;
   onPark: (text: string) => void;
   onRemove: (id: number) => void;
   onClear: () => void;
 };
 
 /** Somewhere to drop a stray thought mid-session and pick it up on the break. */
-export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: ParkingLotProps) {
+export function ParkingLot({
+  parked,
+  hideList,
+  active,
+  onFocus,
+  onPark,
+  onRemove,
+  onClear,
+}: ParkingLotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const count = parked.length;
+  const activeText = active.trim();
 
   return (
     <section className={cn(panel, deskColumn)}>
@@ -100,20 +113,49 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
             "desk:max-h-none",
           )}
         >
-          {parked.map((p) => (
-            <li key={p.id} className="flex items-start gap-2.5 py-0.5">
-              <span className="flex-none pt-1 text-dim tabular-nums">[{p.t.slice(0, 5)}]</span>
-              <span className="min-w-0 flex-1 pt-1 break-words text-ink">{p.text}</span>
-              <button
-                type="button"
-                aria-label={`Remove: ${p.text}`}
-                onClick={() => onRemove(p.id)}
-                className="focus-ring inline-flex min-h-8 flex-none cursor-pointer items-center rounded-xs px-1.5 text-dim hover:text-bright"
+          {parked.map((p) => {
+            const isActive = activeText !== "" && p.text === activeText;
+            return (
+              <li
+                key={p.id}
+                aria-current={isActive || undefined}
+                className="flex items-start gap-2.5 py-0.5"
               >
-                <X size={14} />
-              </button>
-            </li>
-          ))}
+                <span className="flex-none pt-1 text-dim tabular-nums">[{p.t.slice(0, 5)}]</span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 pt-1 break-words",
+                    isActive ? "text-accent" : "text-ink",
+                  )}
+                >
+                  {isActive && (
+                    <span className="mr-1.5 text-[11px] tracking-[0.04em]">[focus]</span>
+                  )}
+                  {p.text}
+                </span>
+                {onFocus && (
+                  <button
+                    type="button"
+                    aria-label={`Focus on: ${p.text}`}
+                    aria-pressed={isActive}
+                    title="focus on this"
+                    onClick={() => onFocus(p.text)}
+                    className="focus-ring inline-flex min-h-8 flex-none cursor-pointer items-center rounded-xs px-1.5 text-dim hover:text-bright aria-pressed:text-accent"
+                  >
+                    <Target size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Remove: ${p.text}`}
+                  onClick={() => onRemove(p.id)}
+                  className="focus-ring inline-flex min-h-8 flex-none cursor-pointer items-center rounded-xs px-1.5 text-dim hover:text-bright"
+                >
+                  <X size={14} />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
