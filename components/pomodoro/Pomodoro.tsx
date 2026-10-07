@@ -198,7 +198,7 @@ export function Pomodoro() {
               <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
             </div>
 
-            {canPickTask && <IntentPanel intent={intent} parked={parked} onEdit={actions.editIntent} />}
+            {canPickTask && <IntentPanel task={intent.task} parked={parked} onTask={actions.setTask} />}
 
             <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
               <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
@@ -252,7 +252,7 @@ export function Pomodoro() {
             parked={parked}
             hideList={running && mode === "focus"}
             active={canPickTask ? intent.task : ""}
-            onFocus={canPickTask ? (text) => actions.editIntent("task", text) : undefined}
+            onFocus={canPickTask ? actions.setTask : undefined}
             onPark={actions.park}
             onRemove={actions.unpark}
             onClear={actions.clearParked}

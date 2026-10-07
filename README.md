@@ -10,7 +10,7 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 - **Chiptune alert**: synthesized with the Web Audio API, so there are no audio files. Starting a timer plays a rising blip and pausing it a falling one. Turn on `repeat_alert` to loop it, and set `repeat_count` to how many times it plays, or `0` to keep it going until you stop it with the main button or `esc`. `volume` sets how loud it is, `soft_tone` swaps it for a gentle sine chime, and `vibrate` adds a buzz on phones that support it.
 - **Desktop notifications**: turn on `notify` to get a desktop pop-up when a timer ends, so you hear about it even with focusd in a background tab. The browser asks for permission the first time; clicking the notification brings focusd back to the front.
 - **Heads-up before the end**: `heads_up` plays a soft cue at 5 and 1 minutes left (skipping any that don't fit the timer), and the dial switches to `WRAP_UP` and shows what's next, so a session winds down instead of stopping abruptly.
-- **Session intention**: before a focus session, name the task and an if-then plan for distractions. Both are logged when the session starts. Type the task, or pick one of your parked thoughts as it: use `or pick` under the task field, or the target button next to a thought in the parking lot. Turn this off with `intention`.
+- **Session intention**: before a focus session, name the task, which is logged when the session starts. Type it, or pick one of your parked thoughts as it: use `or pick` under the task field, or the target button next to a thought in the parking lot. Turn this off with `intention`.
 - **Parking lot**: press `n` mid-session to jot down a stray thought and get back to work. The list stays hidden while you focus and comes back on your break. The thought you're focusing on is marked `[focus]`.
 - **Sensory controls**: turn off `motion` (matrix rain, glitch, blinking), `scanlines` or the end-of-timer `flash`. The OS reduced-motion setting is respected as well.
 - **Daily stats**: sessions completed and focus time for today.
@@ -23,7 +23,6 @@ A hacker-terminal Pomodoro timer. Dark, animated and mobile-first, built with Ne
 Several features are aimed at ADHD, autistic and other neurodivergent users, and each is based on research:
 
 - **Heads-up cues**: meta-analyses find time-perception differences in ADHD across every timing task studied, and warnings before a transition are a standard autism support.
-- **Intention prompt**: if-then plans ("implementation intentions") helped children with ADHD inhibit unwanted responses (Gawrilow & Gollwitzer, 2008).
 - **Parking lot**: writing a distracting thought down takes it off working memory without breaking the session.
 - **Sensory controls**: sensory-processing differences are very common in autism and show up in ADHD too. Many people never set the OS reduced-motion preference, so the app has its own switches.
 
@@ -60,7 +59,7 @@ app/
 components/pomodoro/
   Pomodoro.tsx        Main UI
   Dial.tsx            SVG clock face and progress arc
-  IntentPanel.tsx     Task and if-then plan for the focus session
+  IntentPanel.tsx     Task for the focus session
   ParkingLot.tsx      Stray-thought list
   styles.ts           Class lists shared by the panels
   ConfigRow.tsx       Shared `key: value` row for the config panel
