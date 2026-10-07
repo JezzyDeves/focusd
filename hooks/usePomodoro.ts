@@ -430,7 +430,7 @@ export function usePomodoro() {
   useEffect(() => {
     keys.current = (e) => {
       const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase() ?? "";
-      if (tag === "input" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (tag === "input" || tag === "select" || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === "Space" && tag !== "button") {
         e.preventDefault();
         toggle();
