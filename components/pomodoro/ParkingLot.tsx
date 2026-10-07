@@ -4,7 +4,15 @@ import { useRef } from "react";
 import { StickyNote, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PARK_INPUT_ID, TEXT_MAX, type Parked } from "@/lib/pomodoro";
-import { deskColumn, deskScroll, fileName, panel, panelHead, promptInput, thinScroll } from "./styles";
+import {
+  deskColumn,
+  deskScroll,
+  fileName,
+  panel,
+  panelHead,
+  promptInput,
+  thinScroll,
+} from "./styles";
 
 type ParkingLotProps = {
   parked: Parked[];
@@ -28,7 +36,11 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
           ~/parking_lot.txt
         </span>
         {count > 0 && !hideList ? (
-          <button type="button" onClick={onClear} className="focus-ring -my-1 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-xs px-1.5 text-dim hover:text-bright">
+          <button
+            type="button"
+            onClick={onClear}
+            className="focus-ring -my-1 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-xs px-1.5 text-dim hover:text-bright"
+          >
             <Trash2 size={13} className="flex-none" />
             clear all
           </button>
@@ -71,12 +83,23 @@ export function ParkingLot({ parked, hideList, onPark, onRemove, onClear }: Park
 
       {hideList ? (
         <p className="px-3 py-2.5 text-xs text-dim">
-          {count > 0 ? `${count} parked · review on your break.` : "nothing parked. press n to jot a thought."}
+          {count > 0
+            ? `${count} parked · review on your break.`
+            : "nothing parked. press n to jot a thought."}
         </p>
       ) : count === 0 ? (
-        <p className="px-3 py-2.5 text-xs text-dim">nothing parked. press n mid-session to jot a thought and keep going.</p>
+        <p className="px-3 py-2.5 text-xs text-dim">
+          nothing parked. press n mid-session to jot a thought and keep going.
+        </p>
       ) : (
-        <ul className={cn("max-h-[180px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6]", thinScroll, deskScroll, "desk:max-h-none")}>
+        <ul
+          className={cn(
+            "max-h-[180px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6]",
+            thinScroll,
+            deskScroll,
+            "desk:max-h-none",
+          )}
+        >
           {parked.map((p) => (
             <li key={p.id} className="flex items-start gap-2.5 py-0.5">
               <span className="flex-none pt-1 text-dim tabular-nums">[{p.t.slice(0, 5)}]</span>

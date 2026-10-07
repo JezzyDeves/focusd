@@ -73,5 +73,11 @@ export function MatrixRain({ running }: { running: boolean }) {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-0 size-full opacity-[0.16] motion-reduce:hidden" aria-hidden="true" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none fixed inset-0 z-0 size-full opacity-[0.16] motion-reduce:hidden"
+      aria-hidden="true"
+    />
+  );
 }

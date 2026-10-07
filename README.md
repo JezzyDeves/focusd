@@ -36,12 +36,12 @@ npm run dev
 
 Then open http://localhost:3000.
 
-| Script              | What it does                     |
-| ------------------- | -------------------------------- |
-| `npm run dev`       | Start the dev server             |
-| `npm run build`     | Production build                 |
-| `npm start`         | Serve the production build       |
-| `npm run typecheck` | Type-check with `tsc --noEmit`   |
+| Script              | What it does                   |
+| ------------------- | ------------------------------ |
+| `npm run dev`       | Start the dev server           |
+| `npm run build`     | Production build               |
+| `npm start`         | Serve the production build     |
+| `npm run typecheck` | Type-check with `tsc --noEmit` |
 
 ## Stack
 

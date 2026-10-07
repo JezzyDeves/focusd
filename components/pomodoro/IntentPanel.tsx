@@ -19,7 +19,10 @@ export function IntentPanel({ intent, onEdit }: IntentPanelProps) {
   return (
     <div className={`${panel} px-3 py-1 text-xs`}>
       {FIELDS.map(({ field, label, placeholder }) => (
-        <div key={field} className="flex flex-wrap items-center gap-x-2 border-b border-dashed border-line py-0.5 last:border-b-0">
+        <div
+          key={field}
+          className="flex flex-wrap items-center gap-x-2 border-b border-dashed border-line py-0.5 last:border-b-0"
+        >
           <label htmlFor={`intent-${field}`} className="flex-none cursor-pointer text-accent">
             &gt; {label}:
           </label>

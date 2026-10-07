@@ -33,7 +33,13 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
   return (
     <ConfigRow name={name} hint={hint} htmlFor={id}>
       <div className="flex items-center overflow-hidden rounded-xs border border-line-2">
-        <button type="button" className={stepBtn} aria-label={`Decrease ${name}`} disabled={value <= min} onClick={() => onChange(clamp(value - 1, limits))}>
+        <button
+          type="button"
+          className={stepBtn}
+          aria-label={`Decrease ${name}`}
+          disabled={value <= min}
+          onClick={() => onChange(clamp(value - 1, limits))}
+        >
           <Minus size={16} />
         </button>
         <input
@@ -54,7 +60,13 @@ export function Stepper({ id, name, hint, value, limits, unit, onChange }: Stepp
             if (e.key === "Enter") e.currentTarget.blur();
           }}
         />
-        <button type="button" className={stepBtn} aria-label={`Increase ${name}`} disabled={value >= max} onClick={() => onChange(clamp(value + 1, limits))}>
+        <button
+          type="button"
+          className={stepBtn}
+          aria-label={`Increase ${name}`}
+          disabled={value >= max}
+          onClick={() => onChange(clamp(value + 1, limits))}
+        >
           <Plus size={16} />
         </button>
       </div>

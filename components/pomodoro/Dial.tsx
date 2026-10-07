@@ -17,8 +17,17 @@ export function Dial({ progress, running, className, children }: DialProps) {
   const lit = Math.floor(progress * TICKS);
 
   return (
-    <div className={cn("@container relative mx-auto aspect-square w-[min(100%,360px)] max-w-full desk:w-[clamp(300px,44dvh,460px)]", className)}>
-      <svg viewBox="0 0 300 300" aria-hidden="true" className="absolute inset-0 size-full overflow-visible">
+    <div
+      className={cn(
+        "@container relative mx-auto aspect-square w-[min(100%,360px)] max-w-full desk:w-[clamp(300px,44dvh,460px)]",
+        className,
+      )}
+    >
+      <svg
+        viewBox="0 0 300 300"
+        aria-hidden="true"
+        className="absolute inset-0 size-full overflow-visible"
+      >
         {Array.from({ length: TICKS }, (_, i) => {
           const a = (i / TICKS) * Math.PI * 2 - Math.PI / 2;
           const major = i % 5 === 0;
@@ -56,7 +65,9 @@ export function Dial({ progress, running, className, children }: DialProps) {
         <circle
           className={cn(
             "origin-center animate-orbit [transform-box:fill-box]",
-            running ? "stroke-accent/40 [animation-play-state:running]" : "stroke-line-2 [animation-play-state:paused]",
+            running
+              ? "stroke-accent/40 [animation-play-state:running]"
+              : "stroke-line-2 [animation-play-state:paused]",
           )}
           cx="150"
           cy="150"
@@ -66,7 +77,9 @@ export function Dial({ progress, running, className, children }: DialProps) {
           strokeDasharray="2 7"
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-[2cqi] text-center">{children}</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-[2cqi] text-center">
+        {children}
+      </div>
     </div>
   );
 }

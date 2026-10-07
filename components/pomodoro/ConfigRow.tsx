@@ -10,7 +10,8 @@ type ConfigRowProps = {
 export function ConfigRow({ name, hint, htmlFor, children }: ConfigRowProps) {
   const text = (
     <>
-      <span className="text-accent">{name}</span>:<span className="block text-[11px] text-dim">{hint}</span>
+      <span className="text-accent">{name}</span>:
+      <span className="block text-[11px] text-dim">{hint}</span>
     </>
   );
 

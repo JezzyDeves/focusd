@@ -157,7 +157,8 @@ export const fmt = (ms: number) => {
 };
 
 /** Wall-clock HH:MM:SS. */
-export const stamp = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+export const stamp = (d = new Date()) =>
+  `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 /** Local calendar date as YYYY-MM-DD, used to reset daily stats. */
 export const today = () => {

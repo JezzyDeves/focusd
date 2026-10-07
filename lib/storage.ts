@@ -22,7 +22,10 @@ function write(key: string, value: unknown) {
   }
 }
 
-export const loadSettings = (): Settings => ({ ...DEFAULTS, ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) });
+export const loadSettings = (): Settings => ({
+  ...DEFAULTS,
+  ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}),
+});
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s);
 
 export const freshStats = (): Stats => ({ date: today(), sessions: 0, focusMs: 0 });
@@ -32,7 +35,11 @@ export const loadStats = (): Stats => {
 };
 export const saveStats = (s: Stats) => write(STATS_KEY, s);
 
-export const loadIntent = (): Intent => ({ task: "", then: "", ...(read<Partial<Intent>>(INTENT_KEY) ?? {}) });
+export const loadIntent = (): Intent => ({
+  task: "",
+  then: "",
+  ...(read<Partial<Intent>>(INTENT_KEY) ?? {}),
+});
 export const saveIntent = (i: Intent) => write(INTENT_KEY, i);
 
 export const loadParked = (): Parked[] => {
