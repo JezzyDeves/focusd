@@ -8,7 +8,8 @@ type IntentPanelProps = {
   onTask: (value: string) => void;
 };
 
-const row = "flex flex-wrap items-center gap-x-2 border-b border-dashed border-line py-0.5 last:border-b-0";
+const row =
+  "flex flex-wrap items-center gap-x-2 border-b border-dashed border-line py-0.5 last:border-b-0";
 
 /** What the focus session is for: typed, or picked from the parking lot. */
 export function IntentPanel({ task, parked, onTask }: IntentPanelProps) {

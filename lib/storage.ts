@@ -22,7 +22,10 @@ function write(key: string, value: unknown) {
   }
 }
 
-export const loadSettings = (): Settings => ({ ...DEFAULTS, ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}) });
+export const loadSettings = (): Settings => ({
+  ...DEFAULTS,
+  ...(read<Partial<Settings>>(SETTINGS_KEY) ?? {}),
+});
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s);
 
 export const freshStats = (): Stats => ({ date: today(), sessions: 0, focusMs: 0 });

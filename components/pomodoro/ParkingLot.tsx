@@ -4,7 +4,15 @@ import { useRef } from "react";
 import { StickyNote, Target, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PARK_INPUT_ID, TEXT_MAX, type Parked } from "@/lib/pomodoro";
-import { deskColumn, deskScroll, fileName, panel, panelHead, promptInput, thinScroll } from "./styles";
+import {
+  deskColumn,
+  deskScroll,
+  fileName,
+  panel,
+  panelHead,
+  promptInput,
+  thinScroll,
+} from "./styles";
 
 type ParkingLotProps = {
   parked: Parked[];
@@ -20,7 +28,15 @@ type ParkingLotProps = {
 };
 
 /** Somewhere to drop a stray thought mid-session and pick it up on the break. */
-export function ParkingLot({ parked, hideList, active, onFocus, onPark, onRemove, onClear }: ParkingLotProps) {
+export function ParkingLot({
+  parked,
+  hideList,
+  active,
+  onFocus,
+  onPark,
+  onRemove,
+  onClear,
+}: ParkingLotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const count = parked.length;
   const activeText = active.trim();
@@ -33,7 +49,11 @@ export function ParkingLot({ parked, hideList, active, onFocus, onPark, onRemove
           ~/parking_lot.txt
         </span>
         {count > 0 && !hideList ? (
-          <button type="button" onClick={onClear} className="focus-ring -my-1 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-xs px-1.5 text-dim hover:text-bright">
+          <button
+            type="button"
+            onClick={onClear}
+            className="focus-ring -my-1 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-xs px-1.5 text-dim hover:text-bright"
+          >
             <Trash2 size={13} className="flex-none" />
             clear all
           </button>
@@ -76,19 +96,41 @@ export function ParkingLot({ parked, hideList, active, onFocus, onPark, onRemove
 
       {hideList ? (
         <p className="px-3 py-2.5 text-xs text-dim">
-          {count > 0 ? `${count} parked · review on your break.` : "nothing parked. press n to jot a thought."}
+          {count > 0
+            ? `${count} parked · review on your break.`
+            : "nothing parked. press n to jot a thought."}
         </p>
       ) : count === 0 ? (
-        <p className="px-3 py-2.5 text-xs text-dim">nothing parked. press n mid-session to jot a thought and keep going.</p>
+        <p className="px-3 py-2.5 text-xs text-dim">
+          nothing parked. press n mid-session to jot a thought and keep going.
+        </p>
       ) : (
-        <ul className={cn("max-h-[180px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6]", thinScroll, deskScroll, "desk:max-h-none")}>
+        <ul
+          className={cn(
+            "max-h-[180px] overflow-y-auto px-3 py-1.5 text-xs leading-[1.6]",
+            thinScroll,
+            deskScroll,
+            "desk:max-h-none",
+          )}
+        >
           {parked.map((p) => {
             const isActive = activeText !== "" && p.text === activeText;
             return (
-              <li key={p.id} aria-current={isActive || undefined} className="flex items-start gap-2.5 py-0.5">
+              <li
+                key={p.id}
+                aria-current={isActive || undefined}
+                className="flex items-start gap-2.5 py-0.5"
+              >
                 <span className="flex-none pt-1 text-dim tabular-nums">[{p.t.slice(0, 5)}]</span>
-                <span className={cn("min-w-0 flex-1 pt-1 break-words", isActive ? "text-accent" : "text-ink")}>
-                  {isActive && <span className="mr-1.5 text-[11px] tracking-[0.04em]">[focus]</span>}
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 pt-1 break-words",
+                    isActive ? "text-accent" : "text-ink",
+                  )}
+                >
+                  {isActive && (
+                    <span className="mr-1.5 text-[11px] tracking-[0.04em]">[focus]</span>
+                  )}
                   {p.text}
                 </span>
                 {onFocus && (

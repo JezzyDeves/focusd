@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureAudio, playCue, playDone, playPause, playStart, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
+import {
+  ensureAudio,
+  playCue,
+  playDone,
+  playPause,
+  playStart,
+  setAudioPrefs,
+  startAlarm,
+  stopAlarm,
+} from "@/lib/audio";
 import { buzzCue, buzzDone } from "@/lib/haptics";
 import { notify, requestNotify } from "@/lib/notify";
 import {
@@ -81,7 +90,12 @@ export function usePomodoro() {
   const next = nextMode(mode, cycle, settings.every);
 
   const line = useCallback(
-    (msg: string, kind: LogKind = "sys"): LogLine => ({ id: ++logId.current, t: stamp(), msg, kind }),
+    (msg: string, kind: LogKind = "sys"): LogLine => ({
+      id: ++logId.current,
+      t: stamp(),
+      msg,
+      kind,
+    }),
     [],
   );
   const push = useCallback(
@@ -102,7 +116,9 @@ export function usePomodoro() {
     setLog([
       line("focusd v2.6.0 :: boot sequence"),
       line("mount /dev/attention ........ ok", "ok"),
-      line(`load config.yml :: focus ${s.focus}m · short ${s.short}m · long ${s.long}m · long every ${s.every}`),
+      line(
+        `load config.yml :: focus ${s.focus}m · short ${s.short}m · long ${s.long}m · long every ${s.every}`,
+      ),
       line("distractions.service ....... masked", "ok"),
       line("awaiting input. press START to begin a session."),
     ]);
@@ -235,16 +251,26 @@ export function usePomodoro() {
         if (settings.flash) setFlash((f) => f + 1);
         if (settings.notify) {
           const title = mode === "focus" ? "Focus session complete" : "Break's over";
-          const body = autoRun ? `${MODES[to].label} is running.` : `Up next: ${MODES[to].label} (${settings[MODES[to].key]}m).`;
+          const body = autoRun
+            ? `${MODES[to].label} is running.`
+            : `Up next: ${MODES[to].label} (${settings[MODES[to].key]}m).`;
           notify(title, body);
         }
-        if (mode === "focus") push(`session ${nextCycle}/${settings.every} complete. +${settings.focus}m focus logged`, "ok");
+        if (mode === "focus")
+          push(
+            `session ${nextCycle}/${settings.every} complete. +${settings.focus}m focus logged`,
+            "ok",
+          );
         else push(`${MODES[mode].label} finished. back to work.`, kindFor(mode));
-        if (to === "long") push(`cycle complete :: long_break unlocked (${settings.long}m)`, "long");
+        if (to === "long")
+          push(`cycle complete :: long_break unlocked (${settings.long}m)`, "long");
         else if (to === "short") push(`short_break queued (${settings.short}m)`, "brk");
       }
       if (mode === "focus" && parked.length > 0) {
-        push(`parking_lot :: ${parked.length} thought${parked.length === 1 ? "" : "s"} to review on your break`, "brk");
+        push(
+          `parking_lot :: ${parked.length} thought${parked.length === 1 ? "" : "s"} to review on your break`,
+          "brk",
+        );
       }
       if (autoRun) push(`auto_start :: ${MODES[to].label} running`);
 
@@ -267,7 +293,10 @@ export function usePomodoro() {
       setCued(m);
       if (settings.sound) playCue();
       if (settings.vibrate) buzzCue();
-      push(`heads_up :: ${m}m left in ${MODES[mode].label} · next up: ${MODES[next].label}`, kindFor(next));
+      push(
+        `heads_up :: ${m}m left in ${MODES[mode].label} · next up: ${MODES[next].label}`,
+        kindFor(next),
+      );
     },
     [settings.headsUp, settings.sound, settings.vibrate, total, mode, next, push],
   );
@@ -307,7 +336,10 @@ export function usePomodoro() {
     setRunning(true);
     setGlitch((g) => g + 1);
     const fresh = remaining >= total;
-    push(`${fresh ? "exec" : "resume"} ${MODES[mode].label} :: ${fmt(remaining)} on the clock`, kindFor(mode));
+    push(
+      `${fresh ? "exec" : "resume"} ${MODES[mode].label} :: ${fmt(remaining)} on the clock`,
+      kindFor(mode),
+    );
     if (fresh && mode === "focus" && settings.intention) {
       const task = intent.task.trim();
       if (task) push(`task :: ${task}`, "ok");
@@ -363,7 +395,8 @@ export function usePomodoro() {
     (key: NumericSetting, val: number) => {
       if (settings[key] === val) return;
       setSettings((s) => ({ ...s, [key]: val }));
-      const shown = key === "repeatCount" && val === 0 ? "until stopped" : `${val}${SETTING_UNITS[key]}`;
+      const shown =
+        key === "repeatCount" && val === 0 ? "until stopped" : `${val}${SETTING_UNITS[key]}`;
       const msg = `config :: ${SETTING_NAMES[key]} = ${shown}`;
       if (MODES[mode].key === key) {
         if (running) {
@@ -389,7 +422,10 @@ export function usePomodoro() {
             setSettings((s) => ({ ...s, notify: true }));
             push(`config :: ${FLAG_NAMES[key]} = true`);
           } else {
-            push("notify :: permission denied. allow notifications for this site in your browser.", "warn");
+            push(
+              "notify :: permission denied. allow notifications for this site in your browser.",
+              "warn",
+            );
           }
         });
         return;
@@ -466,6 +502,20 @@ export function usePomodoro() {
     log,
     intent,
     parked,
-    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, setTask, park, unpark, clearParked },
+    actions: {
+      start,
+      pause,
+      toggle,
+      silence,
+      reset,
+      skip,
+      pickMode,
+      setNumber,
+      setFlag,
+      setTask,
+      park,
+      unpark,
+      clearParked,
+    },
   };
 }

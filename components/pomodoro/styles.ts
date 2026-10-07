@@ -9,10 +9,12 @@ export const panelHead =
 export const deskColumn = "desk:flex desk:min-h-0 desk:flex-col";
 export const deskScroll = "desk:min-h-0 desk:flex-1 desk:overflow-y-auto";
 
-export const thinScroll = "[scrollbar-color:var(--color-line-2)_transparent] [scrollbar-width:thin]";
+export const thinScroll =
+  "[scrollbar-color:var(--color-line-2)_transparent] [scrollbar-width:thin]";
 
 /** A panel's file name, led by a Lucide icon in the accent color. */
-export const fileName = "inline-flex min-w-0 items-center gap-1.5 text-ink [&>svg]:flex-none [&>svg]:text-accent";
+export const fileName =
+  "inline-flex min-w-0 items-center gap-1.5 text-ink [&>svg]:flex-none [&>svg]:text-accent";
 
 /** A one-line terminal prompt input: 16px on phones so iOS doesn't zoom in on focus. */
 export const promptInput =

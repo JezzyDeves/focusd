@@ -11,8 +11,12 @@
   color-scheme: dark;
   --accent: #39ff88;
 }
-:root[data-mode="short"] { --accent: #38d5ff; }
-:root[data-mode="long"] { --accent: #ffb547; }
+:root[data-mode="short"] {
+  --accent: #38d5ff;
+}
+:root[data-mode="long"] {
+  --accent: #ffb547;
+}
 
 @theme {
   --color-void: #030705;
@@ -39,19 +43,45 @@
   --animate-type: type 0.5s steps(24, end) both;
   --animate-flash: flash 1.4s ease-out 1;
 
-  @keyframes blink { 50% { opacity: 0; } }
-  @keyframes orbit { to { transform: rotate(360deg); } }
-  @keyframes pip { 50% { background: color-mix(in srgb, var(--color-focus) 35%, transparent); } }
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @keyframes orbit {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pip {
+    50% {
+      background: color-mix(in srgb, var(--color-focus) 35%, transparent);
+    }
+  }
   @keyframes type {
-    from { clip-path: inset(0 100% 0 0); }
-    to { clip-path: inset(0 0 0 0); }
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
   }
   @keyframes flash {
-    0% { opacity: 0; }
-    10% { opacity: 0.28; }
-    30% { opacity: 0.04; }
-    45% { opacity: 0.18; }
-    100% { opacity: 0; }
+    0% {
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.28;
+    }
+    30% {
+      opacity: 0.04;
+    }
+    45% {
+      opacity: 0.18;
+    }
+    100% {
+      opacity: 0;
+    }
   }
 }
 
@@ -59,10 +89,14 @@
 @theme inline {
   --color-accent: var(--accent);
   --shadow-glow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent);
-  --shadow-cta: 0 0 0 1px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent);
-  --shadow-cta-hover: 0 0 0 1px var(--accent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent);
+  --shadow-cta:
+    0 0 0 1px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent);
+  --shadow-cta-hover:
+    0 0 0 1px var(--accent), 0 0 36px color-mix(in srgb, var(--accent) 60%, transparent);
   --shadow-pip: 0 0 8px color-mix(in srgb, var(--color-focus) 60%, transparent);
-  --text-shadow-glow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 34px color-mix(in srgb, var(--accent) 35%, transparent);
+  --text-shadow-glow:
+    0 0 10px color-mix(in srgb, var(--accent) 70%, transparent),
+    0 0 34px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 @layer base {
@@ -92,7 +126,13 @@
 /* Scanlines + vignette over the whole screen. */
 @utility crt {
   background:
-    repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgb(0 0 0 / 0.28) 3px, transparent 4px),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      rgb(0 0 0 / 0.28) 3px,
+      transparent 4px
+    ),
     radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 0.65) 100%);
 }
 
@@ -120,21 +160,55 @@
 }
 
 @keyframes glitch-a {
-  0% { opacity: 0.9; transform: translate(-4px, 0); clip-path: inset(0 0 60% 0); }
-  40% { opacity: 0.9; transform: translate(3px, 0); clip-path: inset(40% 0 20% 0); }
-  80% { opacity: 0.8; transform: translate(-2px, 0); clip-path: inset(70% 0 0 0); }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0.9;
+    transform: translate(-4px, 0);
+    clip-path: inset(0 0 60% 0);
+  }
+  40% {
+    opacity: 0.9;
+    transform: translate(3px, 0);
+    clip-path: inset(40% 0 20% 0);
+  }
+  80% {
+    opacity: 0.8;
+    transform: translate(-2px, 0);
+    clip-path: inset(70% 0 0 0);
+  }
+  100% {
+    opacity: 0;
+  }
 }
 @keyframes glitch-b {
-  0% { opacity: 0.9; transform: translate(4px, 0); clip-path: inset(55% 0 0 0); }
-  40% { opacity: 0.8; transform: translate(-3px, 0); clip-path: inset(0 0 55% 0); }
-  80% { opacity: 0.7; transform: translate(2px, 0); clip-path: inset(20% 0 50% 0); }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0.9;
+    transform: translate(4px, 0);
+    clip-path: inset(55% 0 0 0);
+  }
+  40% {
+    opacity: 0.8;
+    transform: translate(-3px, 0);
+    clip-path: inset(0 0 55% 0);
+  }
+  80% {
+    opacity: 0.7;
+    transform: translate(2px, 0);
+    clip-path: inset(20% 0 50% 0);
+  }
+  100% {
+    opacity: 0;
+  }
 }
 @keyframes glitch-shake {
-  0% { transform: translate(1px, -1px) skewX(-6deg); }
-  50% { transform: translate(-1px, 1px) skewX(4deg); }
-  100% { transform: none; }
+  0% {
+    transform: translate(1px, -1px) skewX(-6deg);
+  }
+  50% {
+    transform: translate(-1px, 1px) skewX(4deg);
+  }
+  100% {
+    transform: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
