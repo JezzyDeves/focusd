@@ -446,12 +446,27 @@ export function usePomodoro() {
     [push],
   );
 
-  const unpark = useCallback((id: number) => setParked((p) => p.filter((x) => x.id !== id)), []);
+  /** Drop the focus task too when the thought it was picked from goes. */
+  const dropTaskIf = useCallback(
+    (gone: (text: string) => boolean) => setIntent((i) => (i.task.trim() !== "" && gone(i.task.trim()) ? { task: "" } : i)),
+    [],
+  );
+
+  const unpark = useCallback(
+    (id: number) => {
+      const removed = parked.find((x) => x.id === id);
+      setParked((p) => p.filter((x) => x.id !== id));
+      if (removed) dropTaskIf((task) => task === removed.text);
+    },
+    [parked, dropTaskIf],
+  );
 
   const clearParked = useCallback(() => {
+    const texts = new Set(parked.map((x) => x.text));
     setParked([]);
+    dropTaskIf((task) => texts.has(task));
     push("parking_lot :: cleared");
-  }, [push]);
+  }, [parked, dropTaskIf, push]);
 
   // Keyboard shortcuts: space start/pause (or stop alarm), esc stop alarm, r reset, s skip, 1/2/3 mode, n park a thought.
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});

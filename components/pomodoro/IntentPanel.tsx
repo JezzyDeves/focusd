@@ -1,4 +1,5 @@
 import { TEXT_MAX, type Parked } from "@/lib/pomodoro";
+import { ParkedPicker } from "./ParkedPicker";
 import { panel, promptInput } from "./styles";
 
 type IntentPanelProps = {
@@ -15,7 +16,7 @@ export function IntentPanel({ task, parked, onTask }: IntentPanelProps) {
   const picked = parked.find((p) => p.text === task.trim());
 
   return (
-    <div className={`${panel} px-3 py-1 text-xs`}>
+    <div className={`${panel} relative z-20 px-3 py-1 text-xs`}>
       <div className={row}>
         <label htmlFor="intent-task" className="flex-none cursor-pointer text-accent">
           &gt; task:
@@ -40,25 +41,7 @@ export function IntentPanel({ task, parked, onTask }: IntentPanelProps) {
           <label htmlFor="intent-pick" className="flex-none cursor-pointer text-dim">
             &gt; or pick:
           </label>
-          <select
-            id="intent-pick"
-            value={picked ? String(picked.id) : ""}
-            className={`${promptInput} cursor-pointer truncate ${picked ? "" : "text-dim"}`}
-            onChange={(e) => {
-              const p = parked.find((x) => String(x.id) === e.target.value);
-              if (p) onTask(p.text);
-              e.currentTarget.blur();
-            }}
-          >
-            <option value="" disabled>
-              from parking lot ({parked.length})
-            </option>
-            {parked.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.text}
-              </option>
-            ))}
-          </select>
+          <ParkedPicker id="intent-pick" parked={parked} picked={picked} onPick={onTask} />
         </div>
       )}
     </div>
