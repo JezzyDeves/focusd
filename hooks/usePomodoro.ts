@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ensureAudio, playCue, playDone, playPause, playStart, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
+import { ensureAudio, playClick, playCue, playDone, playPause, playSkip, playStart, playStop, setAudioPrefs, startAlarm, stopAlarm } from "@/lib/audio";
 import { buzzCue, buzzDone } from "@/lib/haptics";
 import { notify, requestNotify } from "@/lib/notify";
 import {
@@ -167,6 +167,37 @@ export function usePomodoro() {
     return true;
   }, [alarming, push]);
 
+  /** Stop a ringing alert on purpose (main button or esc), with its own sound. Returns whether one was ringing. */
+  const dismiss = useCallback(() => {
+    if (!silence()) return false;
+    playStop();
+    return true;
+  }, [silence]);
+
+  /** The plain button sound, for actions that can also be run from the keyboard. */
+  const click = useCallback(() => {
+    ensureAudio();
+    if (settings.sound) playClick();
+  }, [settings.sound]);
+
+  // Every other button clicks. Ones marked [data-sfx] play their own sound from their action,
+  // so it's heard from the keyboard shortcut too. Read through a ref so turning sound off still clicks.
+  const soundRef = useRef(settings.sound);
+  useEffect(() => {
+    soundRef.current = settings.sound;
+  }, [settings.sound]);
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest?.("button, [role=option]");
+      if (!el || el.closest("[data-sfx]") || !soundRef.current) return;
+      ensureAudio();
+      playClick();
+    };
+    // Capture, so the sound plays before the click's own handler changes anything.
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   // Keep the screen awake while a timer runs (ignored where unsupported).
   useEffect(() => {
     if (!running || !("wakeLock" in navigator)) return;
@@ -327,12 +358,13 @@ export function usePomodoro() {
 
   /** The main button: stops a ringing alert first, otherwise starts or pauses. */
   const toggle = useCallback(() => {
-    if (silence()) return;
+    if (dismiss()) return;
     if (running) pause();
     else start();
-  }, [silence, running, pause, start]);
+  }, [dismiss, running, pause, start]);
 
   const reset = useCallback(() => {
+    click();
     silence();
     endAt.current = null;
     setRunning(false);
@@ -340,23 +372,25 @@ export function usePomodoro() {
     setCued(null);
     setGlitch((g) => g + 1);
     push(`reset ${MODES[mode].label} → ${fmt(total)}`);
-  }, [total, mode, push, silence]);
+  }, [total, mode, push, silence, click]);
 
   const skip = useCallback(() => {
     ensureAudio();
     silence();
+    if (settings.sound) playSkip();
     endAt.current = null;
     advance(true);
-  }, [advance, silence]);
+  }, [settings.sound, advance, silence]);
 
   const pickMode = useCallback(
     (m: Mode) => {
+      click();
       if (m === mode) return;
       silence();
       push(`switch → ${MODES[m].label} (${settings[MODES[m].key]}m)`, kindFor(m));
       switchTo(m, false);
     },
-    [mode, settings, push, switchTo, silence],
+    [mode, settings, push, switchTo, silence, click],
   );
 
   const setNumber = useCallback(
@@ -396,6 +430,11 @@ export function usePomodoro() {
       }
       setSettings((s) => ({ ...s, [key]: val }));
       push(`config :: ${FLAG_NAMES[key]} = ${val}`);
+      // The button's own click was skipped while sound was off, so confirm it's back on.
+      if (key === "sound" && val) {
+        ensureAudio();
+        playClick();
+      }
       if (!val && (key === "sound" || key === "repeatAlert")) silence();
     },
     [push, silence],
@@ -445,7 +484,7 @@ export function usePomodoro() {
       if (e.code === "Space" && tag !== "button") {
         e.preventDefault();
         toggle();
-      } else if (e.key === "Escape") silence();
+      } else if (e.key === "Escape") dismiss();
       else if (e.key === "r") reset();
       else if (e.key === "s") skip();
       else if (e.key === "1") pickMode("focus");
@@ -457,7 +496,7 @@ export function usePomodoro() {
         document.getElementById(PARK_INPUT_ID)?.focus();
       }
     };
-  }, [toggle, silence, reset, skip, pickMode]);
+  }, [toggle, dismiss, reset, skip, pickMode]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => keys.current(e);
     window.addEventListener("keydown", handler);
@@ -481,6 +520,6 @@ export function usePomodoro() {
     log,
     intent,
     parked,
-    actions: { start, pause, toggle, silence, reset, skip, pickMode, setNumber, setFlag, setTask, park, unpark, clearParked },
+    actions: { start, pause, toggle, silence, dismiss, reset, skip, pickMode, setNumber, setFlag, setTask, park, unpark, clearParked },
   };
 }
