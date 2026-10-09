@@ -20,9 +20,12 @@ import {
   Sofa,
   Target,
   Timer,
+  Volume2,
+  VolumeX,
   type LucideIcon,
 } from "lucide-react";
 import { usePomodoro } from "@/hooks/usePomodoro";
+import { playTyping } from "@/lib/audio";
 import { cn } from "@/lib/cn";
 import { LIMITS, MODES, fmt, fmtDur, stamp, type LogKind, type Mode } from "@/lib/pomodoro";
 import { Dial } from "./Dial";
@@ -34,6 +37,8 @@ import { deskColumn, deskScroll, fileName, panel, panelHead, thinScroll } from "
 import { Toggle } from "./Toggle";
 
 const BOOT_LINES = 5;
+/** Seconds a log line takes to type itself out: matches --animate-type in globals.css. */
+const TYPE_S = 0.5;
 
 const LOG_COLOR: Record<LogKind, string> = {
   sys: "text-ink",
@@ -83,11 +88,24 @@ export function Pomodoro() {
     usePomodoro();
   const [configOpen, setConfigOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
+  /** Id of the newest log line already typed, so only new lines make a sound. */
+  const typedId = useRef(0);
 
   useEffect(() => {
     const el = logRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [log]);
+
+  // Type new log lines out loud. The boot lines are skipped: there's been no click to allow audio yet.
+  useEffect(() => {
+    const last = log.at(-1)?.id ?? 0;
+    const fresh = typedId.current > 0 && last > typedId.current;
+    typedId.current = last;
+    if (!fresh || !settings.sound || !settings.logSound) return;
+    // With motion off a line appears at once, so it gets a single keystroke.
+    const stilled = !settings.motion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    playTyping(stilled ? 0 : TYPE_S);
+  }, [log, settings.sound, settings.logSound, settings.motion]);
 
   const every = settings.every;
   const shown = Math.min(cycle, every);
@@ -145,6 +163,7 @@ export function Pomodoro() {
                   key={m}
                   type="button"
                   aria-pressed={mode === m}
+                  data-sfx
                   onClick={() => actions.pickMode(m)}
                   className="focus-ring inline-flex min-h-11 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xs border border-line bg-transparent px-1.5 py-1.5 text-xs leading-none font-medium tracking-[0.04em] text-dim transition hover:border-line-2 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-void aria-pressed:shadow-glow sm:flex-row sm:gap-1.5"
                 >
@@ -201,12 +220,13 @@ export function Pomodoro() {
             {canPickTask && <IntentPanel task={intent.task} parked={parked} onTask={actions.setTask} />}
 
             <div className="grid grid-cols-[1fr_1.6fr_1fr] items-stretch gap-2">
-              <button type="button" onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
+              <button type="button" data-sfx onClick={actions.reset} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
                 <RotateCcw size={15} className="flex-none" />
                 reset
               </button>
               <button
                 type="button"
+                data-sfx
                 onClick={actions.toggle}
                 className={cn(
                   btn,
@@ -231,7 +251,7 @@ export function Pomodoro() {
                   </>
                 )}
               </button>
-              <button type="button" onClick={actions.skip} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
+              <button type="button" data-sfx onClick={actions.skip} className={cn(btn, "border-line-2 bg-panel text-[13px] text-ink hover:border-accent hover:text-bright")}>
                 skip
                 <SkipForward size={15} className="flex-none" />
               </button>
@@ -283,7 +303,7 @@ export function Pomodoro() {
 
                 <ConfigComment icon={Bell}>alerts</ConfigComment>
                 <Toggle name="heads_up" hint="soft cue at 5m and 1m left" on={settings.headsUp} onToggle={() => actions.setFlag("headsUp", !settings.headsUp)} />
-                <Toggle name="sound" hint="play a tone when time's up" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
+                <Toggle name="sound" hint="clicks, typing and alerts" on={settings.sound} onToggle={() => actions.setFlag("sound", !settings.sound)} />
                 <Toggle name="soft_tone" hint="gentle chime, not chiptune" on={settings.softTone} onToggle={() => actions.setFlag("softTone", !settings.softTone)} />
                 <Stepper id="cfg-volume" name="volume" hint="alert loudness" value={settings.volume} limits={LIMITS.volume} unit="/10" onChange={(v) => actions.setNumber("volume", v)} />
                 <Toggle name="repeat_alert" hint="loop the alert" on={settings.repeatAlert} onToggle={() => actions.setFlag("repeatAlert", !settings.repeatAlert)} />
@@ -327,6 +347,16 @@ export function Pomodoro() {
                   <Timer size={13} className="flex-none" />
                   focus <b>{fmtDur(stats.focusMs)}</b>
                 </span>
+                <button
+                  type="button"
+                  aria-pressed={settings.logSound}
+                  aria-label="Log typing sound"
+                  title={settings.logSound ? "mute log typing" : "unmute log typing"}
+                  onClick={() => actions.setFlag("logSound", !settings.logSound)}
+                  className="focus-ring -my-1.5 -mr-1.5 inline-flex min-h-8 cursor-pointer items-center rounded-xs px-1.5 text-dim hover:text-bright aria-pressed:text-accent"
+                >
+                  {settings.logSound ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                </button>
               </span>
             </div>
             <div
