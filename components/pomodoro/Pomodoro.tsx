@@ -20,6 +20,8 @@ import {
   Sofa,
   Target,
   Timer,
+  Volume2,
+  VolumeX,
   type LucideIcon,
 } from "lucide-react";
 import { usePomodoro } from "@/hooks/usePomodoro";
@@ -99,11 +101,11 @@ export function Pomodoro() {
     const last = log.at(-1)?.id ?? 0;
     const fresh = typedId.current > 0 && last > typedId.current;
     typedId.current = last;
-    if (!fresh || !settings.sound) return;
+    if (!fresh || !settings.sound || !settings.logSound) return;
     // With motion off a line appears at once, so it gets a single keystroke.
     const stilled = !settings.motion || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     playTyping(stilled ? 0 : TYPE_S);
-  }, [log, settings.sound, settings.motion]);
+  }, [log, settings.sound, settings.logSound, settings.motion]);
 
   const every = settings.every;
   const shown = Math.min(cycle, every);
@@ -345,6 +347,16 @@ export function Pomodoro() {
                   <Timer size={13} className="flex-none" />
                   focus <b>{fmtDur(stats.focusMs)}</b>
                 </span>
+                <button
+                  type="button"
+                  aria-pressed={settings.logSound}
+                  aria-label="Log typing sound"
+                  title={settings.logSound ? "mute log typing" : "unmute log typing"}
+                  onClick={() => actions.setFlag("logSound", !settings.logSound)}
+                  className="focus-ring -my-1.5 -mr-1.5 inline-flex min-h-8 cursor-pointer items-center rounded-xs px-1.5 text-dim hover:text-bright aria-pressed:text-accent"
+                >
+                  {settings.logSound ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                </button>
               </span>
             </div>
             <div
