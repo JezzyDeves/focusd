@@ -21,6 +21,8 @@ export type Settings = {
   volume: number;
   /** Use a gentle sine chime instead of the square-wave chiptune. */
   softTone: boolean;
+  /** Type new log lines out with keystroke sounds (when `sound` is on). */
+  logSound: boolean;
   /** Vibrate on alerts, where the device supports it. */
   vibrate: boolean;
   /** Pop up a desktop notification when time's up. Needs browser permission. */
@@ -46,6 +48,7 @@ export type FlagSetting =
   | "sound"
   | "repeatAlert"
   | "softTone"
+  | "logSound"
   | "vibrate"
   | "notify"
   | "headsUp"
@@ -80,6 +83,7 @@ export const DEFAULTS: Settings = {
   repeatCount: 0,
   volume: 6,
   softTone: false,
+  logSound: true,
   vibrate: false,
   notify: false,
   headsUp: true,
@@ -139,6 +143,7 @@ export const FLAG_NAMES: Record<FlagSetting, string> = {
   sound: "sound",
   repeatAlert: "repeat_alert",
   softTone: "soft_tone",
+  logSound: "log_sound",
   vibrate: "vibrate",
   notify: "notify",
   headsUp: "heads_up",

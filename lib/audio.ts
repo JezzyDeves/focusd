@@ -87,6 +87,58 @@ const PAUSE: Voice = {
 
 const PAUSE_SOFT: Voice = { wave: "sine", attack: 0.03, notes: [[495, 0, 0.25]] };
 
+/** A single short tick for any button that has no sound of its own. */
+const CLICK: Voice = { wave: "square", attack: 0.003, notes: [[1320, 0, 0.03]] };
+
+const CLICK_SOFT: Voice = { wave: "sine", attack: 0.005, notes: [[880, 0, 0.07]] };
+
+/** Stopping the alarm: a quick tumble down the arpeggio, so it reads as "dismissed". */
+const STOP: Voice = {
+  wave: "square",
+  attack: 0.005,
+  notes: [
+    [1568, 0, 0.05],
+    [1175, 0.05, 0.05],
+    [784, 0.1, 0.05],
+    [523, 0.15, 0.14],
+  ],
+};
+
+const STOP_SOFT: Voice = {
+  wave: "sine",
+  attack: 0.02,
+  notes: [
+    [784, 0, 0.2],
+    [523, 0.16, 0.4],
+  ],
+};
+
+/** Skipping: two quick blips and a jump up an octave, like warping to the next level. */
+const SKIP: Voice = {
+  wave: "square",
+  attack: 0.005,
+  notes: [
+    [784, 0, 0.04],
+    [784, 0.06, 0.04],
+    [1568, 0.12, 0.1],
+  ],
+};
+
+const SKIP_SOFT: Voice = {
+  wave: "sine",
+  attack: 0.02,
+  notes: [
+    [587, 0, 0.15],
+    [880, 0.12, 0.3],
+  ],
+};
+
+/** Keystroke pitches for the log's typing sound; each key picks one at random. */
+const KEYS = [1568, 1760, 1976, 2093, 2349];
+const KEYS_SOFT = [784, 880, 988, 1047, 1175];
+/** Seconds between keystrokes: one for every other step of the log's typing animation. */
+const KEY_GAP_S = 0.042;
+
 /** Sine carries less energy than square at the same gain, so lift it to sound about as loud. */
 const gainFor = (v: Voice, scale = 1) => peak * scale * (v.wave === "sine" ? 2.5 : 1);
 
@@ -118,6 +170,36 @@ export const playPause = () => play(soft ? PAUSE_SOFT : PAUSE);
 
 /** Quieter than the alert so it reads as a heads-up. */
 export const playCue = () => play(CUE, 0.7);
+
+/** Kept quiet: it plays on every button press. */
+export const playClick = () => play(soft ? CLICK_SOFT : CLICK, 0.5);
+
+export const playStop = () => play(soft ? STOP_SOFT : STOP);
+
+export const playSkip = () => play(soft ? SKIP_SOFT : SKIP);
+
+/** When the keystrokes scheduled so far run out, so lines logged together share one burst. */
+let typedUntil = 0;
+
+/**
+ * Chiptune keystrokes for `seconds` while a log line types itself out, or a single
+ * keystroke for 0. Typing already scheduled is extended rather than doubled up.
+ */
+export function playTyping(seconds: number) {
+  if (!ctx) return;
+  const keys = soft ? KEYS_SOFT : KEYS;
+  const now = ctx.currentTime + 0.02;
+  const end = now + seconds;
+  let t = Math.max(now, typedUntil);
+  if (t > end && seconds > 0) return;
+  const notes: Note[] = [];
+  do {
+    notes.push([keys[Math.floor(Math.random() * keys.length)], t - now, 0.02]);
+    t += KEY_GAP_S;
+  } while (t < end);
+  typedUntil = t;
+  schedule(ctx, { wave: soft ? "sine" : "square", attack: 0.002, notes }, now, 0.3);
+}
 
 let alarm: AudioBufferSourceNode | null = null;
 let alarmToken = 0;
