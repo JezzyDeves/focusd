@@ -20,18 +20,23 @@ import {
   Sofa,
   Target,
   Timer,
+  Users,
   Volume2,
   VolumeX,
   type LucideIcon,
 } from "lucide-react";
 import { usePomodoro } from "@/hooks/usePomodoro";
+import { usePresence } from "@/hooks/usePresence";
+import { useRoom } from "@/hooks/useRoom";
 import { playTyping } from "@/lib/audio";
 import { cn } from "@/lib/cn";
 import { LIMITS, MODES, fmt, fmtDur, stamp, type LogKind, type Mode } from "@/lib/pomodoro";
+import { GLOBAL_TOPIC, parseGlobalMeta } from "@/lib/presence";
 import { Dial } from "./Dial";
 import { IntentPanel } from "./IntentPanel";
 import { MatrixRain } from "./MatrixRain";
 import { ParkingLot } from "./ParkingLot";
+import { RoomPanel } from "./RoomPanel";
 import { Stepper } from "./Stepper";
 import { deskColumn, deskScroll, fileName, panel, panelHead, thinScroll } from "./styles";
 import { Toggle } from "./Toggle";
@@ -84,8 +89,17 @@ function Clock() {
 }
 
 export function Pomodoro() {
-  const { settings, mode, running, alarming, remaining, total, progress, cycle, next, cued, stats, glitch, flash, log, intent, parked, actions } =
+  const { settings, mode, running, endsAt, alarming, remaining, total, progress, cycle, next, cued, stats, glitch, flash, log, intent, parked, actions } =
     usePomodoro();
+  const everyone = usePresence({
+    topic: settings.focusRoom ? GLOBAL_TOPIC : null,
+    label: "focus_room",
+    meta: { mode, running },
+    parse: parseGlobalMeta,
+    log: actions.log,
+  });
+  const focusing = everyone.peers.filter((p) => p.meta.mode === "focus" && p.meta.running).length;
+  const room = useRoom({ settings, mode, running, endsAt, remaining, task: intent.task, syncStart: actions.syncStart, log: actions.log });
   const [configOpen, setConfigOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
   /** Id of the newest log line already typed, so only new lines make a sound. */
@@ -137,6 +151,13 @@ export function Pomodoro() {
       </>
     );
   }
+
+  const everyoneLine =
+    everyone.status === "online"
+      ? `▲ ${focusing} other${focusing === 1 ? "" : "s"} focusing`
+      : everyone.status === "connecting"
+        ? "▲ connecting…"
+        : "▲ offline";
 
   return (
     <>
@@ -215,6 +236,7 @@ export function Pomodoro() {
                 })}
               </div>
               <div className="text-center text-xs text-dim [&_em]:text-accent [&_em]:not-italic">{caption}</div>
+              {everyone.status !== "off" && <div className="text-center text-[11px] tracking-[0.04em] text-dim tabular-nums">{everyoneLine}</div>}
             </div>
 
             {canPickTask && <IntentPanel task={intent.task} parked={parked} onTask={actions.setTask} />}
@@ -263,6 +285,8 @@ export function Pomodoro() {
               <kbd>2</kbd>
               <kbd>3</kbd> mode · <kbd>n</kbd> park a thought
             </div>
+
+            {room.configured && <RoomPanel room={room} settings={settings} mode={mode} task={intent.task} />}
           </div>
         </main>
 
@@ -323,6 +347,10 @@ export function Pomodoro() {
 
                 <ConfigComment icon={Target}>focus aids</ConfigComment>
                 <Toggle name="intention" hint="name the task before focusing" on={settings.intention} onToggle={() => actions.setFlag("intention", !settings.intention)} />
+
+                <ConfigComment icon={Users}>together</ConfigComment>
+                <Toggle name="focus_room" hint="see how many others are focusing" on={settings.focusRoom} onToggle={() => actions.setFlag("focusRoom", !settings.focusRoom)} />
+                <Toggle name="share_task" hint="show your task to your room" on={settings.shareTask} onToggle={() => actions.setFlag("shareTask", !settings.shareTask)} />
 
                 <ConfigComment icon={Eye}>sensory</ConfigComment>
                 <Toggle name="motion" hint="rain, glitch and blinking" on={settings.motion} onToggle={() => actions.setFlag("motion", !settings.motion)} />

@@ -40,3 +40,14 @@ export const loadParked = (): Parked[] => {
   return Array.isArray(p) ? p : [];
 };
 export const saveParked = (p: Parked[]) => write(PARKED_KEY, p);
+
+const HANDLE_KEY = "focusd.handle";
+const HOSTS_KEY = "focusd.hosts";
+
+export const loadHandle = () => read<string>(HANDLE_KEY) ?? "";
+export const saveHandle = (h: string) => write(HANDLE_KEY, h);
+
+/** Host tokens for rooms created in this browser, by room id. */
+const loadHosts = () => read<Record<string, string>>(HOSTS_KEY) ?? {};
+export const loadHostToken = (id: string): string | null => loadHosts()[id] ?? null;
+export const saveHostToken = (id: string, token: string) => write(HOSTS_KEY, { ...loadHosts(), [id]: token });
